@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useOutletContext, useNavigate } from 'react-router-dom'
 
 interface MaintenanceRecord {
   id: string
@@ -13,6 +13,7 @@ interface MaintenanceRecord {
 
 export default function MaintenanceManagement() {
   const { setIsMobileMenuOpen } = useOutletContext<{ setIsMobileMenuOpen: React.Dispatch<React.SetStateAction<boolean>> }>()
+  const navigate = useNavigate()
   
   // Status Filter State
   const [statusFilter, setStatusFilter] = useState('All')
@@ -312,7 +313,7 @@ export default function MaintenanceManagement() {
                   </thead>
                   <tbody className="divide-y divide-gray-50 text-xs font-mono font-medium text-on-surface">
                     {filteredRecords.map(record => (
-                      <tr key={record.id} className="hover:bg-blue-50/10 transition-colors">
+                      <tr key={record.id} className="hover:bg-blue-50/10 transition-colors cursor-pointer" onClick={() => navigate(`/maintenance/${record.id}`)}>
                         <td className="px-6 py-4 font-sans">
                           <div className="flex flex-col">
                             <span className="font-bold text-on-surface">{record.vehicleId}</span>

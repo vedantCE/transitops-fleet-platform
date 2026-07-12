@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useOutletContext, useNavigate } from 'react-router-dom'
 
 interface DriverRecord {
   id: string
@@ -26,6 +26,7 @@ interface ComplianceAlert {
 
 export default function DriversScreen() {
   const { setIsMobileMenuOpen } = useOutletContext<{ setIsMobileMenuOpen: React.Dispatch<React.SetStateAction<boolean>> }>()
+  const navigate = useNavigate()
 
   // Drawer open state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -346,7 +347,7 @@ export default function DriversScreen() {
                   </thead>
                   <tbody className="divide-y divide-gray-50 text-xs font-mono font-medium text-on-surface">
                     {filteredDrivers.map(d => (
-                      <tr key={d.id} className="hover:bg-blue-50/10 transition-colors">
+                      <tr key={d.id} className="hover:bg-blue-50/10 transition-colors cursor-pointer" onClick={() => navigate(`/drivers/${d.id}`)}>
                         <td className="px-6 py-4 font-sans">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-industrial-blue/10 text-industrial-blue flex items-center justify-center font-bold text-xs">

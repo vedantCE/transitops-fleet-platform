@@ -6,10 +6,12 @@ import VehicleDetailsScreen from './features/fleet/VehicleDetailsScreen'
 import TripManagement from './features/trips/TripManagement'
 import TripDetailsScreen from './features/trips/TripDetailsScreen'
 import MaintenanceManagement from './features/maintenance/MaintenanceManagement'
+import MaintenanceDetailsScreen from './features/maintenance/MaintenanceDetailsScreen'
 import FuelExpenseManagement from './features/expenses/FuelExpenseManagement'
 import AnalyticsScreen from './features/analytics/AnalyticsScreen'
 import SettingsScreen from './features/settings/SettingsScreen'
 import DriversScreen from './features/drivers/DriversScreen'
+import DriverDetailsScreen from './features/drivers/DriverDetailsScreen'
 import AccessRestrictedScreen from './features/restricted/AccessRestrictedScreen'
 import SearchResultsScreen from './features/search/SearchResultsScreen'
 import PageNotFoundScreen from './features/errors/PageNotFoundScreen'
@@ -30,10 +32,12 @@ function App() {
           <Route path="/trips" element={<TripManagement />} />
           <Route path="/trips/:tripId" element={<TripDetailsScreen />} />
           <Route path="/maintenance" element={<MaintenanceManagement />} />
+          <Route path="/maintenance/:maintenanceId" element={<MaintenanceDetailsScreen />} />
           <Route path="/expenses" element={<FuelExpenseManagement />} />
           <Route path="/analytics" element={<AnalyticsScreen />} />
           <Route path="/settings" element={<SettingsScreen />} />
           <Route path="/drivers" element={<DriversScreen />} />
+          <Route path="/drivers/:driverId" element={<DriverDetailsScreen />} />
           <Route path="/search" element={<SearchResultsScreen />} />
           <Route path="*" element={<PageNotFoundScreen />} />
         </Route>
