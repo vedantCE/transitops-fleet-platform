@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import { useAuth } from '../context/AuthContext'
+import transitopsIcon from '../assets/transitops-icon.png'
 
 export default function MainLayout() {
   const navigate = useNavigate()
@@ -81,18 +82,28 @@ export default function MainLayout() {
         <div className="fixed inset-0 bg-black/60 z-50 flex md:hidden" onClick={() => setIsMobileMenuOpen(false)}>
           <aside className="w-64 bg-background h-full flex flex-col py-6 animate-slide-in-right" onClick={e => e.stopPropagation()}>
             <div className="px-6 mb-4 flex justify-between items-center">
-              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">TRANSITOPS</p>
+              <p className="text-[9px] font-bold tracking-widest">
+                <span className="text-white/40">TRANSIT</span>
+                <span className="text-[#34a853]">OPS</span>
+              </p>
               <button className="text-white" onClick={() => setIsMobileMenuOpen(false)}>
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-            <div className="px-6 mb-6 flex items-center gap-2">
-              <div className="w-8 h-8 bg-white/20 rounded flex items-center justify-center">
-                <span className="material-symbols-outlined text-white">rocket_launch</span>
-              </div>
-              <div>
-                <h1 className="text-sm font-bold text-white leading-none">TransitOps</h1>
-                <p className="text-white/60 text-[10px] uppercase tracking-widest mt-1">Global Command</p>
+            <div className="px-6 mb-6 flex items-center gap-2.5">
+              <img
+                src={transitopsIcon}
+                alt="TransitOps Logo"
+                className="w-8 h-8 rounded-lg object-contain shrink-0"
+              />
+              <div className="flex flex-col">
+                <div className="flex items-baseline text-sm font-bold leading-none tracking-tight">
+                  <span className="text-white">Transit</span>
+                  <span className="text-[#34a853]">Ops</span>
+                </div>
+                <p className="text-[7.2px] font-bold text-white/40 uppercase tracking-[0.16em] mt-1.5 leading-none">
+                  SMART TRANSPORT OPERATIONS
+                </p>
               </div>
             </div>
 

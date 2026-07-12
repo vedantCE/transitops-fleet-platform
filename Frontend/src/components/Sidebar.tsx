@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import transitopsIcon from '../assets/transitops-icon.png'
 
 interface SidebarProps {
   activeTab: string
@@ -53,8 +54,9 @@ export default function Sidebar({
       {/* BRANDING SECTION */}
       <div className={`px-4 mb-2 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
         {!isCollapsed && (
-          <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest transition-opacity duration-300">
-            TRANSITOPS
+          <p className="text-[9px] font-bold tracking-widest transition-opacity duration-300">
+            <span className="text-white/40">TRANSIT</span>
+            <span className="text-[#34a853]">OPS</span>
           </p>
         )}
         <button
@@ -68,14 +70,21 @@ export default function Sidebar({
         </button>
       </div>
 
-      <div className={`px-4 mb-8 flex items-center gap-2 ${isCollapsed ? 'justify-center' : ''}`}>
-        <div className="w-8 h-8 bg-white/20 rounded flex items-center justify-center shrink-0">
-          <span className="material-symbols-outlined text-white">rocket_launch</span>
-        </div>
+      <div className={`px-4 mb-8 flex items-center gap-2.5 ${isCollapsed ? 'justify-center' : ''}`}>
+        <img
+          src={transitopsIcon}
+          alt="TransitOps Logo"
+          className="w-8 h-8 rounded-lg object-contain shrink-0"
+        />
         {!isCollapsed && (
-          <div className="transition-opacity duration-300">
-            <h1 className="text-sm font-bold text-white leading-none">TransitOps</h1>
-            <p className="text-white/60 text-[10px] uppercase tracking-widest mt-1">Global Command</p>
+          <div className="transition-opacity duration-300 flex flex-col">
+            <div className="flex items-baseline text-sm font-bold leading-none tracking-tight">
+              <span className="text-white">Transit</span>
+              <span className="text-[#34a853]">Ops</span>
+            </div>
+            <p className="text-[7.2px] font-bold text-white/40 uppercase tracking-[0.16em] mt-1.5 leading-none">
+              SMART TRANSPORT OPERATIONS
+            </p>
           </div>
         )}
       </div>

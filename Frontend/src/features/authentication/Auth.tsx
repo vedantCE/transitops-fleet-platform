@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getApiErrorMessage } from '../../lib/api'
+import transitopsIcon from '../../assets/transitops-icon.png'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -98,16 +99,19 @@ export default function Login() {
         <div className="relative z-10 w-full max-w-md mx-auto">
           {/* Branding */}
           <div className="flex items-center gap-3 mb-12">
-            <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center overflow-hidden">
-              <img
-                alt="TransitOps Logo"
-                className="w-8 h-8 object-contain filter brightness-0 invert"
-                src="https://lh3.googleusercontent.com/aida/AP1WRLvtl5lSS7yPs6g3mf9fcPEUyebTK0phLR84-tsaGwTJSSZt3kqiXGPL-Vz3lWsqieqDUZHyewmhyqYXDETRl1KQBdJRhXHwk-NyN6D-L_y7wN4WansBoQ13UfdzDXPCSUZ8zMZaXVsA2VyieG2UY4QVTeTHYitNAatnrJ-fYrrXMJuAMSqd4XJaE7qRaoPDndC6VZqDz0pOT90x8fc131Ik9ykXdwAW2vuw5V8Kzun0xjboTlJNETKMg"
-              />
-            </div>
+            <img
+              src={transitopsIcon}
+              alt="TransitOps Logo"
+              className="w-10 h-10 rounded-xl object-contain shrink-0"
+            />
             <div className="flex flex-col">
-              <h1 className="text-xl font-bold leading-none tracking-tight">TransitOps</h1>
-              <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mt-1">Global Command</p>
+              <div className="flex items-baseline text-xl font-bold leading-none tracking-tight">
+                <span className="text-white">Transit</span>
+                <span className="text-[#34a853]">Ops</span>
+              </div>
+              <p className="text-[8px] font-bold text-white/40 uppercase tracking-[0.18em] mt-2 leading-none">
+                SMART TRANSPORT OPERATIONS
+              </p>
             </div>
           </div>
           
@@ -161,13 +165,21 @@ export default function Login() {
       {/* RIGHT SECTION: Auth Form */}
       <main className="w-full md:w-1/2 lg:w-[55%] flex flex-col justify-center items-center p-8 bg-dashboard-canvas md:rounded-l-[40px] z-20">
         {/* Mobile Logo (Visible only on mobile) */}
-        <div className="md:hidden mb-10 flex flex-col items-center">
+        <div className="md:hidden mb-8 flex flex-col items-center">
           <img
+            src={transitopsIcon}
             alt="TransitOps Logo"
-            className="w-12 h-12 object-contain mb-3"
-            src="https://lh3.googleusercontent.com/aida/AP1WRLvtl5lSS7yPs6g3mf9fcPEUyebTK0phLR84-tsaGwTJSSZt3kqiXGPL-Vz3lWsqieqDUZHyewmhyqYXDETRl1KQBdJRhXHwk-NyN6D-L_y7wN4WansBoQ13UfdzDXPCSUZ8zMZaXVsA2VyieG2UY4QVTeTHYitNAatnrJ-fYrrXMJuAMSqd4XJaE7qRaoPDndC6VZqDz0pOT90x8fc131Ik9ykXdwAW2vuw5V8Kzun0xjboTlJNETKMg"
+            className="w-14 h-14 rounded-2xl object-contain mb-3"
           />
-          <h1 className="text-xl font-bold text-on-surface">TransitOps</h1>
+          <div className="flex flex-col items-center">
+            <div className="flex items-baseline text-xl font-bold leading-none tracking-tight">
+              <span className="text-on-surface">Transit</span>
+              <span className="text-[#34a853]">Ops</span>
+            </div>
+            <p className="text-[7.5px] font-bold text-on-surface-variant/40 uppercase tracking-[0.18em] mt-1.5 leading-none">
+              SMART TRANSPORT OPERATIONS
+            </p>
+          </div>
         </div>
 
         <div className="w-full max-w-[400px]">
