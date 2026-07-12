@@ -49,6 +49,15 @@ export default function Dashboard() {
     navigate('/login')
   }
 
+  const handleNavClick = (tabName: string) => {
+    if (tabName === 'Dashboard') navigate('/dashboard')
+    else if (tabName === 'Fleet') navigate('/fleet')
+    else if (tabName === 'Trips') navigate('/trips')
+    else if (tabName === 'Maintenance') navigate('/maintenance')
+    else if (tabName === 'Fuel & Expenses') navigate('/expenses')
+    else setActiveTab(tabName)
+  }
+
   const navItemsOperations = [
     { name: 'Dashboard', icon: 'dashboard' },
     { name: 'Fleet', icon: 'directions_bus' },
@@ -105,7 +114,7 @@ export default function Dashboard() {
                       ? 'text-white bg-white/10'
                       : 'text-white/60 hover:text-white hover:bg-white/5'
                   }`}
-                  onClick={() => setActiveTab(item.name)}
+                  onClick={() => handleNavClick(item.name)}
                 >
                   <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
                   {item.name}
@@ -126,7 +135,7 @@ export default function Dashboard() {
                       ? 'text-white bg-white/10'
                       : 'text-white/60 hover:text-white hover:bg-white/5'
                   }`}
-                  onClick={() => setActiveTab(item.name)}
+                  onClick={() => handleNavClick(item.name)}
                 >
                   <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
                   {item.name}
@@ -194,7 +203,7 @@ export default function Dashboard() {
                           : 'text-white/60 hover:text-white hover:bg-white/5'
                       }`}
                       onClick={() => {
-                        setActiveTab(item.name)
+                        handleNavClick(item.name)
                         setIsMobileMenuOpen(false)
                       }}
                     >
@@ -510,7 +519,7 @@ export default function Dashboard() {
       {/* MOBILE BOTTOM NAVIGATION BAR */}
       <nav className="md:hidden fixed bottom-4 left-4 right-4 h-16 bg-white shadow-2xl rounded-2xl flex items-center justify-around z-40 border border-black/[0.02]">
         <button
-          onClick={() => setActiveTab('Dashboard')}
+          onClick={() => handleNavClick('Dashboard')}
           className={`flex flex-col items-center gap-1 ${
             activeTab === 'Dashboard' ? 'text-on-background' : 'text-on-surface-variant/50'
           }`}
@@ -519,7 +528,7 @@ export default function Dashboard() {
           <span className="text-[10px] font-bold uppercase">Home</span>
         </button>
         <button
-          onClick={() => setActiveTab('Fleet')}
+          onClick={() => handleNavClick('Fleet')}
           className={`flex flex-col items-center gap-1 ${
             activeTab === 'Fleet' ? 'text-on-background' : 'text-on-surface-variant/50'
           }`}
@@ -528,7 +537,7 @@ export default function Dashboard() {
           <span className="text-[10px] font-bold uppercase">Fleet</span>
         </button>
         <button
-          onClick={() => setActiveTab('Trips')}
+          onClick={() => handleNavClick('Trips')}
           className={`flex flex-col items-center gap-1 ${
             activeTab === 'Trips' ? 'text-on-background' : 'text-on-surface-variant/50'
           }`}
