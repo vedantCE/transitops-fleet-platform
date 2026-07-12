@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@theme {
+  --color-on-primary-fixed: #0d1c32;
+  --color-on-tertiary-container: #818486;
+  --color-on-tertiary-fixed-variant: #444749;
+  --color-on-surface: #0d1c2e;
+  --color-surface: #f8f9ff;
+  --color-on-secondary-container: #1d3989;
+  --color-surface-container-highest: #d5e3fc;
+  --color-surface-tint: #515f78;
+  --color-on-surface-variant: #44474d;
+  --color-secondary-container: #8fa7fe;
+  --color-outline: #75777e;
+  --color-secondary-fixed: #dce1ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-on-error: #ffffff;
+  --color-tertiary: #000000;
+  --color-on-tertiary: #ffffff;
+  --color-primary-container: #0d1c32;
+  --color-on-background: #0d1c2e;
+  --color-surface-container-high: #dce9ff;
+  --color-safety-orange: #F97316;
+  --color-primary-fixed: #d6e3ff;
+  --color-secondary-fixed-dim: #b6c4ff;
+  --color-tertiary-container: #191c1e;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-fixed: #00164e;
+  --color-surface-variant: #d5e3fc;
+  --color-tertiary-fixed: #e0e3e5;
+  --color-on-primary: #ffffff;
+  --color-error-red: #EF4444;
+  --color-on-secondary-fixed-variant: #264191;
+  --color-primary: #000000;
+  --color-tertiary-fixed-dim: #c4c7c9;
+  --color-outline-variant: #c5c6cd;
+  --color-error: #ba1a1a;
+  --color-industrial-blue: #3B82F6;
+  --color-on-primary-fixed-variant: #39475f;
+  --color-inverse-surface: #233144;
+  --color-surface-dim: #ccdbf3;
+  --color-error-container: #ffdad6;
+  --color-inverse-on-surface: #eaf1ff;
+  --color-surface-container: #e6eeff;
+  --color-on-tertiary-fixed: #191c1e;
+  --color-surface-bright: #f8f9ff;
+  --color-secondary: #4059aa;
+  --color-inverse-primary: #b9c7e4;
+  --color-surface-container-low: #eff4ff;
+  --color-primary-fixed-dim: #b9c7e4;
+  --color-on-primary-container: #76849f;
+  --color-on-error-container: #93000a;
+  --color-success-green: #10B981;
+  --color-alert-yellow: #EAB308;
+  --color-background: #0D3131;
+  --color-dashboard-canvas: #F1F3F4;
+
+  --font-headline-lg: "Inter", sans-serif;
+  --font-label-md: "JetBrains Mono", monospace;
+  --font-label-sm: "JetBrains Mono", monospace;
+  --font-body-sm: "Inter", sans-serif;
+  --font-headline-md: "Inter", sans-serif;
+  --font-headline-sm: "Inter", sans-serif;
+  --font-body-md: "Inter", sans-serif;
+  --font-body-lg: "Inter", sans-serif;
+  
+  --radius-lg: 0.5rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+}
+
+@utility custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 9999px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
