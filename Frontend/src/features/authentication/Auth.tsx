@@ -153,7 +153,7 @@ export default function Login() {
           
           {/* Footer */}
           <footer className="mt-16 pt-8 border-t border-white/10 flex items-center justify-between text-[10px] text-white/30 uppercase tracking-widest">
-            <span>© TransitOps • Admin</span>
+            <span>© TransitOps</span>
             <div className="flex gap-4">
               <a className="hover:text-white transition-colors" href="#">Privacy</a>
               <a className="hover:text-white transition-colors" href="#">Terms</a>

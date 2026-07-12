@@ -92,9 +92,13 @@ export default function AnalyticsScreen() {
     return { avgEfficiency, totalCost, fleetROI }
   }, [telemetry])
 
-  const top4 = telemetry.slice(0, 4)
+  // Vehicles with no completed trips have no real distance/cost data — their ROI/efficiency
+  // is reported as 0 rather than "no data", which would otherwise crowd out active vehicles
+  // at the top of the ranking (0% ROI outranks any vehicle whose costs exceed its modeled revenue).
+  const activeTelemetry = telemetry.filter((t) => t.totalDistance > 0)
+  const top4 = activeTelemetry.slice(0, 4)
   const maxSortValue = Math.max(...top4.map((t) => t[sortMetric]), 1)
-  const top3ByEfficiency = [...telemetry].sort((a, b) => b.fuelEfficiency - a.fuelEfficiency).slice(0, 3)
+  const top3ByEfficiency = [...activeTelemetry].sort((a, b) => b.fuelEfficiency - a.fuelEfficiency).slice(0, 3)
 
   return (
     <>
@@ -104,9 +108,6 @@ export default function AnalyticsScreen() {
           <button className="md:hidden text-on-surface p-1 hover:bg-black/5 rounded" onClick={() => setIsMobileMenuOpen(true)}>
             <span className="material-symbols-outlined">menu</span>
           </button>
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-on-surface font-headline-sm">Reports &amp; Analytics</h2>
-          </div>
         </div>
       </header>
 

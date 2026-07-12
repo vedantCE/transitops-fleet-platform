@@ -181,9 +181,6 @@ export default function FuelExpenseManagement() {
           <button className="md:hidden text-on-surface p-1 hover:bg-black/5 rounded" onClick={() => setIsMobileMenuOpen(true)}>
             <span className="material-symbols-outlined">menu</span>
           </button>
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-on-surface font-headline-sm">Fuel &amp; Expense Management</h2>
-          </div>
         </div>
       </header>
 

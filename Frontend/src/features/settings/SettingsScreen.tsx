@@ -35,9 +35,6 @@ export default function SettingsScreen() {
           <button className="md:hidden text-on-surface p-1 hover:bg-black/5 rounded" onClick={() => setIsMobileMenuOpen(true)}>
             <span className="material-symbols-outlined">menu</span>
           </button>
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-on-surface font-headline-sm">Settings &amp; RBAC</h2>
-          </div>
         </div>
         <div className="flex items-center gap-4">
           <button className="p-2 rounded-full hover:bg-black/5 transition-all relative">

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet'
+import L from 'leaflet'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import { listTrips } from '../../services/trips'
 import { listVehicles } from '../../services/vehicles'
@@ -12,6 +14,36 @@ const STATUS_BY_LABEL: Record<string, TripStatus> = {
   Draft: 'DRAFT',
   Cancelled: 'CANCELLED',
 }
+
+const getTruckIcon = (regNumber: string, tripId: string) => L.divIcon({
+  className: 'bg-transparent',
+  html: `
+    <div class="flex items-center gap-2 -translate-y-1/2 -translate-x-[16px]">
+      <div class="bg-[#1f2937] w-8 h-8 rounded-full shadow-md flex items-center justify-center border-2 border-white shrink-0 pointer-events-none">
+        <span class="material-symbols-outlined text-white text-[16px]">local_shipping</span>
+      </div>
+      <div class="w-4 h-[1.5px] bg-gray-400/50 shrink-0"></div>
+      <div class="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.08)] border border-gray-100 font-bold text-xs text-gray-800 tracking-tight whitespace-nowrap cursor-pointer hover:bg-gray-50 pointer-events-auto" onclick="window.location.href='/trips/${tripId}'">
+        ${regNumber}
+      </div>
+    </div>
+  `,
+  iconSize: [0, 0]
+})
+
+const pinIcon = L.divIcon({
+  className: 'bg-transparent',
+  html: `
+    <div class="flex flex-col items-center -translate-y-[40px] -translate-x-[16px]">
+      <div class="absolute bottom-[-6px] w-6 h-6 bg-yellow-400/40 rounded-full animate-ping"></div>
+      <div class="absolute bottom-[2px] w-2 h-2 bg-yellow-400 rounded-full border border-white z-10 shadow-sm"></div>
+      <div class="w-8 h-8 bg-yellow-400 rounded-t-full rounded-bl-full rounded-br-none rotate-45 shadow-md flex items-center justify-center relative z-20 mb-1">
+        <div class="w-3 h-3 bg-white rounded-full -rotate-45"></div>
+      </div>
+    </div>
+  `,
+  iconSize: [0, 0]
+})
 
 export default function Dashboard() {
   const { setIsMobileMenuOpen } = useOutletContext<{ setIsMobileMenuOpen: React.Dispatch<React.SetStateAction<boolean>> }>()
@@ -233,28 +265,40 @@ export default function Dashboard() {
               </div>
             </div>
             
-            {/* Map Placeholder Graphic */}
-            <div className="flex-1 bg-dashboard-canvas rounded-2xl border border-black/5 relative overflow-hidden flex items-center justify-center p-4">
-              {/* Map grid lines */}
-              <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-60"></div>
-              {/* Routing lines */}
-              <svg className="absolute inset-0 w-full h-full text-gray-200">
-                <path d="M 50 150 Q 200 80 400 220 T 700 120" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
-                <path d="M 120 50 Q 300 250 500 100 T 650 300" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
-              </svg>
+            {/* Interactive Live Map */}
+            <div className="flex-1 rounded-2xl bg-[#F8F9FA] relative overflow-hidden border border-black/5 flex flex-col z-0">
               
-              {/* Route Markers — real vehicles currently On Trip, no live GPS coordinates are tracked */}
-              {trips.filter((t) => t.status === 'DISPATCHED').slice(0, 2).map((t, i) => (
-                <div
-                  key={t.id}
-                  className={`absolute flex items-center gap-2 bg-white/95 backdrop-blur px-2.5 py-1 rounded-xl shadow-md border border-black/5 ${i === 0 ? 'top-[80px] left-[200px] animate-bounce' : 'bottom-[100px] right-[180px]'}`}
-                >
-                  <span className={`material-symbols-outlined text-[16px] ${i === 0 ? 'text-on-background' : 'text-success-green'}`}>local_shipping</span>
-                  <span className="text-[10px] font-bold font-mono">{t.vehicle.registrationNumber}</span>
-                </div>
-              ))}
+              <MapContainer center={[19.0760, 72.8777]} zoom={12} className="w-full h-full" zoomControl={false} dragging={false} scrollWheelZoom={false}>
+                <TileLayer
+                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                  attribution="&copy; OpenStreetMap contributors &copy; CARTO"
+                />
+                
+                {/* Simulated Route 1 */}
+                <Polyline positions={[[19.0500, 72.8300], [19.0600, 72.8300], [19.0600, 72.8500], [19.0750, 72.8500]]} pathOptions={{ color: '#FACC15', weight: 4 }} />
+                <Marker position={[19.0500, 72.8300]} icon={pinIcon} />
+                
+                {trips.filter(t => t.status === 'DISPATCHED')[0] && (
+                  <Marker position={[19.0750, 72.8500]} icon={getTruckIcon(trips.filter(t => t.status === 'DISPATCHED')[0].vehicle.registrationNumber, trips.filter(t => t.status === 'DISPATCHED')[0].id)} />
+                )}
 
-              <p className="text-[10px] text-on-surface-variant/40 relative font-bold uppercase tracking-widest font-label-sm">Map Visualization Area (illustrative — no live GPS feed)</p>
+                {/* Simulated Route 2 (if any) */}
+                {trips.filter(t => t.status === 'DISPATCHED')[1] && (
+                  <>
+                    <Polyline positions={[[19.0800, 72.9000], [19.0800, 72.9200], [19.1000, 72.9200]]} pathOptions={{ color: '#FACC15', weight: 4 }} />
+                    <Marker position={[19.0800, 72.9000]} icon={pinIcon} />
+                    <Marker position={[19.1000, 72.9200]} icon={getTruckIcon(trips.filter(t => t.status === 'DISPATCHED')[1].vehicle.registrationNumber, trips.filter(t => t.status === 'DISPATCHED')[1].id)} />
+                  </>
+                )}
+              </MapContainer>
+
+              {/* Overlay matching the UI */}
+              <div className="absolute top-5 left-6 pointer-events-none z-[400]">
+                <div className="bg-white/80 backdrop-blur-md px-4 py-3 rounded-2xl shadow-sm border border-white">
+                  <h3 className="text-xl font-extrabold text-gray-900 tracking-tight font-headline-sm">Live Tracking</h3>
+                  <p className="text-xs text-gray-500 font-medium mt-1 font-body-sm">Real-time tracking of your delivery</p>
+                </div>
+              </div>
             </div>
           </div>
 
