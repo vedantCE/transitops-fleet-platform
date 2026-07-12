@@ -7,19 +7,29 @@ import MaintenanceManagement from './features/maintenance/MaintenanceManagement'
 import FuelExpenseManagement from './features/expenses/FuelExpenseManagement'
 import AnalyticsScreen from './features/analytics/AnalyticsScreen'
 import SettingsScreen from './features/settings/SettingsScreen'
+import DriversScreen from './features/drivers/DriversScreen'
+import AccessRestrictedScreen from './features/restricted/AccessRestrictedScreen'
+import MainLayout from './components/MainLayout'
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/fleet" element={<FleetRegistry />} />
-        <Route path="/trips" element={<TripManagement />} />
-        <Route path="/maintenance" element={<MaintenanceManagement />} />
-        <Route path="/expenses" element={<FuelExpenseManagement />} />
-        <Route path="/analytics" element={<AnalyticsScreen />} />
-        <Route path="/settings" element={<SettingsScreen />} />
+        <Route path="/restricted" element={<AccessRestrictedScreen />} />
+        
+        {/* Layout Wrapped Routes */}
+        <Route element={<MainLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/fleet" element={<FleetRegistry />} />
+          <Route path="/trips" element={<TripManagement />} />
+          <Route path="/maintenance" element={<MaintenanceManagement />} />
+          <Route path="/expenses" element={<FuelExpenseManagement />} />
+          <Route path="/analytics" element={<AnalyticsScreen />} />
+          <Route path="/settings" element={<SettingsScreen />} />
+          <Route path="/drivers" element={<DriversScreen />} />
+        </Route>
+
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
