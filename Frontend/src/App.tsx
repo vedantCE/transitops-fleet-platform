@@ -5,6 +5,8 @@ import FleetRegistry from './features/fleet/FleetRegistry'
 import TripManagement from './features/trips/TripManagement'
 import MaintenanceManagement from './features/maintenance/MaintenanceManagement'
 import FuelExpenseManagement from './features/expenses/FuelExpenseManagement'
+import AnalyticsScreen from './features/analytics/AnalyticsScreen'
+import SettingsScreen from './features/settings/SettingsScreen'
 
 function App() {
   return (
@@ -16,6 +18,8 @@ function App() {
         <Route path="/trips" element={<TripManagement />} />
         <Route path="/maintenance" element={<MaintenanceManagement />} />
         <Route path="/expenses" element={<FuelExpenseManagement />} />
+        <Route path="/analytics" element={<AnalyticsScreen />} />
+        <Route path="/settings" element={<SettingsScreen />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>

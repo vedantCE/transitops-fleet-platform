@@ -150,6 +150,8 @@ export default function FleetRegistry() {
     else if (tabName === 'Trips') navigate('/trips')
     else if (tabName === 'Maintenance') navigate('/maintenance')
     else if (tabName === 'Fuel & Expenses') navigate('/expenses')
+    else if (tabName === 'Analytics') navigate('/analytics')
+    else if (tabName === 'Settings') navigate('/settings')
     else setActiveTab(tabName)
   }
 

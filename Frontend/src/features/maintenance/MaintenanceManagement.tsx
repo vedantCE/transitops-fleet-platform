@@ -4,11 +4,11 @@ import { useNavigate } from 'react-router-dom'
 interface MaintenanceRecord {
   id: string
   vehicleId: string
-  description: string
-  priority: 'Critical' | 'High' | 'Medium' | 'Low'
-  technician: string
+  vehicleType: string
+  service: string
   cost: number
-  status: 'In Progress' | 'Awaiting Parts' | 'Completed'
+  date: string
+  status: 'Active' | 'Completed'
 }
 
 export default function MaintenanceManagement() {
@@ -18,28 +18,57 @@ export default function MaintenanceManagement() {
   const [activeTab, setActiveTab] = useState('Maintenance')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-  // Maintenance list state
+  // Status Filter State
+  const [statusFilter, setStatusFilter] = useState('All')
+
+  // Mock list of maintenance records from Stitch mockup
   const initialRecords: MaintenanceRecord[] = [
-    { id: 'MNT001', vehicleId: 'VAN-05', description: 'Engine over-heating issue', priority: 'Critical', technician: 'Ramesh Kumar', cost: 12500, status: 'In Progress' },
-    { id: 'MNT002', vehicleId: 'TRUCK-02', description: 'Tire replacement & balancing', priority: 'Medium', technician: 'Suresh Patil', cost: 24000, status: 'Awaiting Parts' },
-    { id: 'MNT003', vehicleId: 'ACE-05', description: 'Scheduled oil and filter change', priority: 'Low', technician: 'Amit Singh', cost: 3500, status: 'In Progress' },
-    { id: 'MNT004', vehicleId: 'TRK-09', description: 'Brake booster failure check', priority: 'High', technician: 'Ramesh Kumar', cost: 8500, status: 'Completed' },
+    {
+      id: 'MNT001',
+      vehicleId: 'EV-TRAN-901',
+      vehicleType: 'Electric Bus',
+      service: 'Battery Diagnostics',
+      cost: 450.0,
+      date: '24 Oct 2023',
+      status: 'Active',
+    },
+    {
+      id: 'MNT002',
+      vehicleId: 'SH-COMM-223',
+      vehicleType: 'Shuttle',
+      service: 'Tire Replacement',
+      cost: 820.0,
+      date: '23 Oct 2023',
+      status: 'Completed',
+    },
+    {
+      id: 'MNT003',
+      vehicleId: 'EV-TRAN-904',
+      vehicleType: 'Electric Bus',
+      service: 'Brake System Flush',
+      cost: 1200.0,
+      date: '22 Oct 2023',
+      status: 'Active',
+    },
   ]
+
   const [records, setRecords] = useState<MaintenanceRecord[]>(initialRecords)
 
-  // Create Request Form states
-  const [selectedVehicle, setSelectedVehicle] = useState('Select Vehicle')
-  const [description, setDescription] = useState('')
-  const [priority, setPriority] = useState<'Critical' | 'High' | 'Medium' | 'Low'>('Medium')
-  const [technician, setTechnician] = useState('Select Technician')
-  const [estCost, setEstCost] = useState('')
-  
+  // Log Service Record Form states
+  const [vehicleId, setVehicleId] = useState('Select vehicle...')
+  const [serviceType, setServiceType] = useState('Routine Checkup')
+  const [serviceCost, setServiceCost] = useState('')
+  const [serviceDate, setServiceDate] = useState('')
+  const [notes, setNotes] = useState('')
+
   const handleNavClick = (tabName: string) => {
     if (tabName === 'Dashboard') navigate('/dashboard')
     else if (tabName === 'Fleet') navigate('/fleet')
     else if (tabName === 'Trips') navigate('/trips')
     else if (tabName === 'Maintenance') navigate('/maintenance')
     else if (tabName === 'Fuel & Expenses') navigate('/expenses')
+    else if (tabName === 'Analytics') navigate('/analytics')
+    else if (tabName === 'Settings') navigate('/settings')
     else setActiveTab(tabName)
   }
 
@@ -47,38 +76,50 @@ export default function MaintenanceManagement() {
     navigate('/login')
   }
 
-  const handleCreateRequest = (e: React.FormEvent) => {
+  const handleLogServiceRecord = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (selectedVehicle === 'Select Vehicle' || !description || technician === 'Select Technician') {
-      alert('Please fill out Vehicle, Description, and Technician to log maintenance.')
+    if (vehicleId === 'Select vehicle...') {
+      alert('Please select a valid vehicle.')
       return
     }
+
+    const typeMapping: Record<string, string> = {
+      'EV-TRAN-901': 'Electric Bus',
+      'SH-COMM-223': 'Shuttle',
+      'EV-TRAN-904': 'Electric Bus',
+      'TR-HAUL-556': 'Maintenance Truck',
+    }
+
+    const costNum = serviceCost ? Number(serviceCost) : 0
+    const formattedDate = serviceDate
+      ? new Date(serviceDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      : 'Today'
 
     const nextIdNum = records.length + 1
     const nextId = `MNT${String(nextIdNum).padStart(3, '0')}`
 
     const newRecord: MaintenanceRecord = {
       id: nextId,
-      vehicleId: selectedVehicle.split(' ')[0],
-      description,
-      priority,
-      technician,
-      cost: estCost ? Number(estCost) : 0,
-      status: 'In Progress',
+      vehicleId,
+      vehicleType: typeMapping[vehicleId] || 'Commercial Vehicle',
+      service: serviceType,
+      cost: costNum,
+      date: formattedDate,
+      status: 'Active',
     }
 
     setRecords([newRecord, ...records])
 
     // Reset Form
-    setSelectedVehicle('Select Vehicle')
-    setDescription('')
-    setPriority('Medium')
-    setTechnician('Select Technician')
-    setEstCost('')
+    setVehicleId('Select vehicle...')
+    setServiceType('Routine Checkup')
+    setServiceCost('')
+    setServiceDate('')
+    setNotes('')
   }
 
-  const handleCompleteMaintenance = (recordId: string) => {
+  const handleCloseMaintenance = (recordId: string) => {
     setRecords(
       records.map(r => {
         if (r.id === recordId) {
@@ -90,10 +131,15 @@ export default function MaintenanceManagement() {
   }
 
   // Stats Counters
-  const totalTickets = records.length
-  const inShopCount = records.filter(r => r.status !== 'Completed').length
+  const activeCount = records.filter(r => r.status === 'Active').length
   const completedCount = records.filter(r => r.status === 'Completed').length
-  const totalOpex = records.reduce((sum, r) => sum + r.cost, 0)
+  const totalCostVal = records.reduce((sum, r) => sum + r.cost, 0)
+
+  // Filtered records
+  const filteredRecords = records.filter(r => {
+    if (statusFilter === 'All') return true
+    return r.status === statusFilter
+  })
 
   const navItemsOperations = [
     { name: 'Dashboard', icon: 'dashboard' },
@@ -312,94 +358,202 @@ export default function MaintenanceManagement() {
           </div>
         </header>
 
-        {/* CONTENT AREA */}
+        {/* CONTENT CANVAS */}
         <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 custom-scrollbar">
-          {/* Header Section */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          {/* Header Description & Actions */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-on-surface font-headline-lg">Fleet Maintenance</h2>
-              <p className="text-sm text-on-surface-variant mt-1 font-body-md">Schedule repairs and track workshop work orders</p>
+              <h2 className="text-2xl font-bold text-on-surface font-headline-lg">Maintenance Management</h2>
+              <div className="flex space-x-4 mt-2">
+                <span className="flex items-center text-xs text-on-surface-variant">
+                  <span className="w-2.5 h-2.5 rounded-full bg-safety-orange mr-2"></span>
+                  Vehicles In Shop: <strong className="ml-1 text-on-surface font-mono">5</strong>
+                </span>
+                <span className="flex items-center text-xs text-on-surface-variant">
+                  <span className="w-2.5 h-2.5 rounded-full bg-industrial-blue mr-2"></span>
+                  Active Maintenance: <strong className="ml-1 text-on-surface font-mono">5</strong>
+                </span>
+              </div>
             </div>
-            <div className="flex gap-4">
-              <div className="bg-white px-6 py-3 rounded-xl shadow-sm text-center border border-black/5">
-                <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1 font-label-sm">Total Tickets</p>
-                <p className="text-2xl font-bold text-on-surface font-mono">{String(totalTickets).padStart(2, '0')}</p>
-              </div>
-              <div className="bg-white px-6 py-3 rounded-xl shadow-sm text-center border border-black/5">
-                <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1 font-label-sm">Active Orders</p>
-                <p className="text-2xl font-bold text-industrial-blue font-mono">{String(inShopCount).padStart(2, '0')}</p>
-              </div>
-              <div className="bg-white px-6 py-3 rounded-xl shadow-sm text-center border border-black/5">
-                <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1 font-label-sm">Resolved</p>
-                <p className="text-2xl font-bold text-safety-orange font-mono">{String(completedCount).padStart(2, '0')}</p>
-              </div>
-              <div className="bg-white px-6 py-3 rounded-xl shadow-sm text-center border border-black/5">
-                <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1 font-label-sm">Total Cost</p>
-                <p className="text-2xl font-bold text-success-green font-mono">₹ {totalOpex.toLocaleString()}</p>
-              </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => alert('Report exported.')}
+                className="flex items-center px-4 py-2 bg-white border border-black/5 text-on-surface font-medium hover:bg-black/5 transition-colors rounded-xl text-xs cursor-pointer"
+              >
+                <span className="material-symbols-outlined mr-2 text-sm">download</span> Export Report
+              </button>
+              <button
+                onClick={() => alert('Service scheduled.')}
+                className="flex items-center px-4 py-2 bg-background text-white font-medium hover:opacity-90 transition-colors rounded-xl text-xs cursor-pointer"
+              >
+                <span className="material-symbols-outlined mr-2 text-sm">add</span> Schedule Service
+              </button>
             </div>
           </div>
 
-          {/* Grid Layout */}
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+          {/* Columns Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
-            {/* Left Column: Maintenance Tickets */}
-            <div className="xl:col-span-7 space-y-4">
-              <h3 className="text-lg font-bold text-on-surface px-2 font-headline-sm">Active Work Orders</h3>
-              <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-black/[0.02]">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm font-body-md">
-                    <thead className="bg-white border-b border-gray-100">
-                      <tr className="text-on-surface-variant text-[11px] uppercase tracking-wider font-label-sm">
-                        <th className="px-6 py-5 font-bold">Ticket ID</th>
-                        <th className="px-6 py-5 font-bold">Vehicle</th>
-                        <th className="px-6 py-5 font-bold">Description</th>
-                        <th className="px-6 py-5 font-bold text-center">Priority</th>
-                        <th className="px-6 py-5 font-bold text-right">Cost</th>
-                        <th className="px-6 py-5 font-bold text-center">Status</th>
-                        <th className="px-6 py-5 font-bold text-right">Actions</th>
+            {/* Left Column: Log Service Record */}
+            <div className="lg:col-span-5 bg-white p-6 rounded-2xl border border-black/5 shadow-sm">
+              <h3 className="text-base font-bold text-on-surface mb-6 font-headline-sm">Log Service Record</h3>
+              <form onSubmit={handleLogServiceRecord} className="space-y-4 font-body-sm text-sm">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider font-label-sm">Vehicle ID / Name</label>
+                  <select
+                    value={vehicleId}
+                    onChange={(e) => setVehicleId(e.target.value)}
+                    className="w-full bg-dashboard-canvas/40 border border-black/5 rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-industrial-blue outline-none cursor-pointer"
+                  >
+                    <option>Select vehicle...</option>
+                    <option>EV-TRAN-901</option>
+                    <option>SH-COMM-223</option>
+                    <option>EV-TRAN-904</option>
+                    <option>TR-HAUL-556</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider font-label-sm">Service Type</label>
+                    <select
+                      value={serviceType}
+                      onChange={(e) => setServiceType(e.target.value)}
+                      className="w-full bg-dashboard-canvas/40 border border-black/5 rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-industrial-blue outline-none cursor-pointer"
+                    >
+                      <option>Routine Checkup</option>
+                      <option>Battery Service</option>
+                      <option>Brake Repair</option>
+                      <option>Tire Rotation</option>
+                      <option>System Diagnostic</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1 font-mono">
+                    <label className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider font-label-sm font-sans">Service Cost ($)</label>
+                    <input
+                      value={serviceCost}
+                      onChange={(e) => setServiceCost(e.target.value)}
+                      className="w-full bg-dashboard-canvas/40 border border-black/5 rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-industrial-blue outline-none"
+                      placeholder="0.00"
+                      type="number"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider font-label-sm">Service Date</label>
+                  <input
+                    value={serviceDate}
+                    onChange={(e) => setServiceDate(e.target.value)}
+                    className="w-full bg-dashboard-canvas/40 border border-black/5 rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-industrial-blue outline-none cursor-pointer"
+                    type="date"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider font-label-sm">Maintenance Notes</label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="w-full bg-dashboard-canvas/40 border border-black/5 rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-industrial-blue outline-none resize-none"
+                    placeholder="Describe the service required or performed..."
+                    rows={4}
+                  />
+                </div>
+                <div className="bg-blue-50/50 border-l-4 border-industrial-blue p-4 rounded-xl">
+                  <div className="flex gap-3">
+                    <span className="material-symbols-outlined text-industrial-blue">info</span>
+                    <div>
+                      <p className="font-bold text-on-surface font-sans">Impact on Operations</p>
+                      <p className="text-on-surface-variant text-xs mt-0.5 leading-relaxed font-body-sm">Adding this record will mark the vehicle as "Under Maintenance" and remove it from active routing.</p>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-3.5 bg-background text-white font-bold rounded-xl hover:opacity-90 transition-all shadow-lg shadow-background/25 cursor-pointer uppercase tracking-widest text-[10px]"
+                >
+                  Register Record
+                </button>
+              </form>
+            </div>
+
+            {/* Right Column: Service Summary & Logs */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Quick Summary Cards */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white border border-black/5 p-5 rounded-2xl shadow-sm">
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm">Active</p>
+                  <p className="text-2xl font-bold text-safety-orange mt-1 font-mono">{String(activeCount).padStart(2, '0')}</p>
+                </div>
+                <div className="bg-white border border-black/5 p-5 rounded-2xl shadow-sm">
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm">Completed</p>
+                  <p className="text-2xl font-bold text-success-green mt-1 font-mono">{String(completedCount).padStart(3, '0')}</p>
+                </div>
+                <div className="bg-white border border-black/5 p-5 rounded-2xl shadow-sm">
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm font-sans">Total Cost (MTD)</p>
+                  <p className="text-2xl font-bold text-on-surface mt-1 font-mono">${totalCostVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+              </div>
+
+              {/* Service Logs Table Container */}
+              <div className="bg-white rounded-2xl border border-black/5 shadow-sm flex flex-col min-h-[420px]">
+                <div className="px-6 py-4 border-b border-black/5 flex justify-between items-center">
+                  <h4 className="text-base font-bold text-on-surface font-headline-sm">Service Log</h4>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs">filter_list</span>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="text-xs bg-dashboard-canvas/40 border border-black/5 rounded-lg pl-8 pr-4 py-1.5 focus:ring-1 focus:ring-industrial-blue outline-none cursor-pointer font-bold font-label-sm"
+                    >
+                      <option value="All">Status: All</option>
+                      <option value="Active">Active</option>
+                      <option value="Completed">Completed</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-x-auto">
+                  <table className="w-full text-left text-sm font-body-md border-collapse">
+                    <thead className="bg-dashboard-canvas text-on-surface-variant text-[11px] uppercase tracking-wider font-label-sm sticky top-0 z-10">
+                      <tr>
+                        <th className="px-6 py-4 font-bold">Vehicle</th>
+                        <th className="px-6 py-4 font-bold">Service</th>
+                        <th className="px-6 py-4 font-bold">Cost</th>
+                        <th className="px-6 py-4 font-bold">Date</th>
+                        <th className="px-6 py-4 font-bold text-center">Status</th>
+                        <th className="px-6 py-4 font-bold text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {records.map(record => (
-                        <tr key={record.id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="px-6 py-5 font-mono font-medium">{record.id}</td>
-                          <td className="px-6 py-5 font-mono">{record.vehicleId}</td>
-                          <td className="px-6 py-5 text-on-surface-variant max-w-[180px] truncate" title={record.description}>
-                            {record.description}
+                    <tbody className="divide-y divide-gray-50 text-xs font-mono font-medium text-on-surface">
+                      {filteredRecords.map(record => (
+                        <tr key={record.id} className="hover:bg-blue-50/10 transition-colors">
+                          <td className="px-6 py-4 font-sans">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-on-surface">{record.vehicleId}</span>
+                              <span className="text-[10px] text-on-surface-variant mt-0.5">{record.vehicleType}</span>
+                            </div>
                           </td>
-                          <td className="px-6 py-5 text-center">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                              record.priority === 'Critical'
-                                ? 'bg-red-50 text-error-red'
-                                : record.priority === 'High'
-                                  ? 'bg-amber-50 text-safety-orange'
-                                  : record.priority === 'Medium'
-                                    ? 'bg-blue-50 text-industrial-blue'
-                                    : 'bg-gray-100 text-on-surface-variant'
-                            }`}>
-                              {record.priority}
-                            </span>
-                          </td>
-                          <td className="px-6 py-5 font-mono text-right font-semibold">₹ {record.cost.toLocaleString()}</td>
-                          <td className="px-6 py-5 text-center">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-bold uppercase border ${
+                          <td className="px-6 py-4 text-on-surface-variant font-sans">{record.service}</td>
+                          <td className="px-6 py-4 font-bold text-on-surface">${record.cost.toFixed(2)}</td>
+                          <td className="px-6 py-4 text-on-surface-variant">{record.date}</td>
+                          <td className="px-6 py-4 text-center">
+                            <span className={`inline-block px-2.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
                               record.status === 'Completed'
                                 ? 'bg-green-50 text-success-green border-success-green/10'
-                                : record.status === 'In Progress'
-                                  ? 'bg-blue-50 text-industrial-blue border-industrial-blue/10'
-                                  : 'bg-amber-50 text-safety-orange border-safety-orange/10'
+                                : 'bg-amber-50 text-safety-orange border-safety-orange/10'
                             }`}>
                               {record.status}
                             </span>
                           </td>
-                          <td className="px-6 py-5 text-right">
-                            {record.status !== 'Completed' && (
+                          <td className="px-6 py-4 text-right font-sans">
+                            {record.status === 'Active' ? (
                               <button
-                                onClick={() => handleCompleteMaintenance(record.id)}
-                                className="px-3 py-1 bg-dashboard-canvas border border-black/5 hover:bg-black/5 transition-all text-[9px] font-bold rounded-lg uppercase tracking-wider cursor-pointer"
+                                onClick={() => handleCloseMaintenance(record.id)}
+                                className="text-industrial-blue font-bold text-[10px] uppercase tracking-wider hover:underline cursor-pointer"
                               >
-                                Close
+                                Close Maintenance
+                              </button>
+                            ) : (
+                              <button className="text-on-surface-variant hover:text-industrial-blue cursor-pointer">
+                                <span className="material-symbols-outlined text-sm">visibility</span>
                               </button>
                             )}
                           </td>
@@ -408,95 +562,21 @@ export default function MaintenanceManagement() {
                     </tbody>
                   </table>
                 </div>
-              </div>
-            </div>
-
-            {/* Right Column: Log New Request Form */}
-            <div className="xl:col-span-5 space-y-4">
-              <div className="bg-white border border-black/5 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-lg font-bold mb-6 flex items-center gap-2 font-headline-sm">
-                  <span className="material-symbols-outlined text-industrial-blue">add_circle</span>
-                  Create Maintenance Request
-                </h3>
-                <form onSubmit={handleCreateRequest} className="space-y-4 font-body-sm text-sm">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm">Vehicle ID</label>
-                    <select
-                      value={selectedVehicle}
-                      onChange={(e) => setSelectedVehicle(e.target.value)}
-                      className="w-full bg-white border border-black/5 rounded-xl px-3 py-2.5 focus:border-industrial-blue focus:ring-industrial-blue text-sm outline-none cursor-pointer"
-                    >
-                      <option>Select Vehicle</option>
-                      <option>VAN-05</option>
-                      <option>TRUCK-02</option>
-                      <option>ACE-05</option>
-                    </select>
+                {/* Table Footer */}
+                <div className="px-6 py-4 border-t border-black/5 flex justify-between items-center text-xs bg-gray-50/20 font-body-sm">
+                  <p className="text-on-surface-variant">Showing {filteredRecords.length} of {records.length} records</p>
+                  <div className="flex items-center gap-1.5">
+                    <button className="p-1.5 border border-gray-200 rounded-lg hover:bg-dashboard-canvas transition-colors disabled:opacity-30" disabled>
+                      <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+                    </button>
+                    <button className="w-8 h-8 flex items-center justify-center bg-background text-white rounded-lg font-bold shadow-md">
+                      1
+                    </button>
+                    <button className="p-1.5 border border-gray-200 rounded-lg hover:bg-dashboard-canvas transition-colors disabled:opacity-30" disabled>
+                      <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                    </button>
                   </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm">Service Priority</label>
-                    <div className="flex gap-2">
-                      {(['Low', 'Medium', 'High', 'Critical'] as const).map(p => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setPriority(p)}
-                          className={`flex-1 py-2 border rounded-xl text-xs font-bold transition-all uppercase tracking-wider cursor-pointer ${
-                            priority === p
-                              ? 'bg-industrial-blue text-white border-industrial-blue shadow-sm'
-                              : 'bg-white border-gray-100 hover:bg-dashboard-canvas text-on-surface-variant'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm">Assign Technician</label>
-                    <select
-                      value={technician}
-                      onChange={(e) => setTechnician(e.target.value)}
-                      className="w-full bg-white border border-black/5 rounded-xl px-3 py-2.5 focus:border-industrial-blue focus:ring-industrial-blue text-sm outline-none cursor-pointer"
-                    >
-                      <option>Select Technician</option>
-                      <option>Ramesh Kumar</option>
-                      <option>Suresh Patil</option>
-                      <option>Amit Singh</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm font-sans">Estimated Cost (₹)</label>
-                    <input
-                      value={estCost}
-                      onChange={(e) => setEstCost(e.target.value)}
-                      className="w-full bg-white border border-black/5 rounded-xl px-3 py-2.5 focus:border-industrial-blue outline-none text-sm font-mono"
-                      placeholder="e.g. 5000"
-                      type="number"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm">Issue Description</label>
-                    <textarea
-                      required
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      className="w-full bg-white border border-black/5 rounded-xl px-3 py-2 focus:border-industrial-blue outline-none text-sm"
-                      placeholder="Describe the vehicle mechanical problem..."
-                      rows={3}
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full bg-on-background text-white py-3.5 rounded-xl font-bold hover:opacity-90 transition-all shadow-md active:scale-[0.98] mt-2 uppercase tracking-widest text-[10px] cursor-pointer"
-                  >
-                    Submit Order
-                  </button>
-                </form>
+                </div>
               </div>
             </div>
           </div>
