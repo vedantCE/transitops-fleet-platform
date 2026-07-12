@@ -13,6 +13,7 @@ const ROLE_INFO: Record<UserRole, { label: string; description: string }> = {
 export default function SettingsScreen() {
   const { setIsMobileMenuOpen } = useOutletContext<{ setIsMobileMenuOpen: React.Dispatch<React.SetStateAction<boolean>> }>()
   const { user } = useAuth()
+  const canEditGeneralPreferences = user?.role === 'FLEET_MANAGER'
 
   // Settings states — local/session-only, not persisted to any backend (no
   // org-settings API exists yet).
@@ -63,13 +64,14 @@ export default function SettingsScreen() {
         {/* Settings Columns split */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* General Config (Left 6/12) */}
+          {/* General Config (Left 6/12) — Fleet Manager only */}
+          {canEditGeneralPreferences && (
           <div className="lg:col-span-6 bg-white p-6 rounded-2xl border border-black/5 shadow-sm space-y-6">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-industrial-blue text-xl">settings</span>
               <h3 className="text-base font-bold text-on-surface font-headline-sm">General Preferences</h3>
             </div>
-            
+
             <form onSubmit={handleSaveConfig} className="space-y-4 font-body-sm text-sm">
               <div className="space-y-1">
                 <label className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider font-label-sm">Company Name</label>
@@ -129,9 +131,10 @@ export default function SettingsScreen() {
               </button>
             </form>
           </div>
+          )}
 
-          {/* RBAC Settings (Right 6/12) */}
-          <div className="lg:col-span-6 bg-white p-6 rounded-2xl border border-black/5 shadow-sm space-y-6">
+          {/* RBAC Settings (Right 6/12, or full width when General Preferences is hidden) */}
+          <div className={`${canEditGeneralPreferences ? 'lg:col-span-6' : 'lg:col-span-12'} bg-white p-6 rounded-2xl border border-black/5 shadow-sm space-y-6`}>
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-industrial-blue text-xl">shield</span>
               <h3 className="text-base font-bold text-on-surface font-headline-sm">Your Account &amp; Role</h3>

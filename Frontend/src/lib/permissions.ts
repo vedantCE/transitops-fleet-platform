@@ -11,3 +11,9 @@ export const canLogFuel = (role?: UserRole) => role === 'FLEET_MANAGER' || role 
 export const canDeleteFuel = (role?: UserRole) => role === 'FLEET_MANAGER'
 export const canManageExpenses = (role?: UserRole) => role === 'FLEET_MANAGER' || role === 'FINANCIAL_ANALYST'
 export const canExportReports = (role?: UserRole) => role === 'FLEET_MANAGER' || role === 'FINANCIAL_ANALYST'
+
+// Safety Officers are focused on driver compliance and have no business
+// need to see fuel spend or maintenance records, so those modules are
+// hidden from them entirely (not just write-protected).
+export const canViewMaintenance = (role?: UserRole) => role !== 'SAFETY_OFFICER'
+export const canViewFuel = (role?: UserRole) => role !== 'SAFETY_OFFICER'

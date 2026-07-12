@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import { useAuth } from '../context/AuthContext'
+import { canViewFuel, canViewMaintenance } from '../lib/permissions'
 import transitopsIcon from '../assets/transitops-icon.png'
 
 export default function MainLayout() {
@@ -59,8 +60,8 @@ export default function MainLayout() {
 
   const navItemsManagement = [
     { name: 'Analytics', icon: 'leaderboard' },
-    { name: 'Maintenance', icon: 'build' },
-    { name: 'Fuel & Expenses', icon: 'local_gas_station' },
+    ...(canViewMaintenance(user?.role) ? [{ name: 'Maintenance', icon: 'build' }] : []),
+    ...(canViewFuel(user?.role) ? [{ name: 'Fuel & Expenses', icon: 'local_gas_station' }] : []),
     { name: 'Settings', icon: 'settings' },
   ]
 
@@ -75,6 +76,7 @@ export default function MainLayout() {
         setLayoutSearchQuery={setLayoutSearchQuery}
         onSearchSubmit={handleSearchSubmit}
         userName={user?.name ?? ''}
+        userRole={user?.role}
       />
 
       {/* MOBILE DRAWER OVERLAY */}

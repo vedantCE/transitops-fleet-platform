@@ -374,21 +374,6 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Microsoft Login */}
-          <button
-            type="button"
-            className="w-full border border-black/5 bg-white/40 text-on-surface text-sm font-medium py-3 rounded-lg hover:bg-white/80 transition-all flex items-center justify-center gap-3 cursor-pointer"
-            onClick={() => setAuthError('SSO registration/login is not available — please use email and password.')}
-          >
-            <svg className="w-4 h-4" viewBox="0 0 23 23">
-              <rect fill="#f25022" height="10" width="10"></rect>
-              <rect fill="#7fba00" height="10" width="10" x="11"></rect>
-              <rect fill="#00a4ef" height="10" width="10" y="11"></rect>
-              <rect fill="#ffb900" height="10" width="10" x="11" y="11"></rect>
-            </svg>
-            Continue with Microsoft 365
-          </button>
-
           {/* Support Link */}
           <p className="text-center text-xs text-on-surface-variant/60 mt-10">
             Need help?{' '}

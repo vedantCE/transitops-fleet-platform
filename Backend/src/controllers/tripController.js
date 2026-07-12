@@ -179,9 +179,9 @@ const completeTrip = asyncHandler(async (req, res) => {
       409
     );
   }
-  if (finalOdometer < trip.vehicle.odometer) {
+  if (finalOdometer <= trip.vehicle.odometer) {
     throw new AppError(
-      `Final odometer (${finalOdometer}) cannot be less than the vehicle's current odometer (${trip.vehicle.odometer})`,
+      `Final odometer (${finalOdometer}) must be greater than the vehicle's current odometer (${trip.vehicle.odometer})`,
       400
     );
   }

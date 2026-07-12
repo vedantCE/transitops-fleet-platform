@@ -17,6 +17,8 @@ import SearchResultsScreen from './features/search/SearchResultsScreen'
 import PageNotFoundScreen from './features/errors/PageNotFoundScreen'
 import MainLayout from './components/MainLayout'
 import ProtectedRoute from './components/ProtectedRoute'
+import RoleGuard from './components/RoleGuard'
+import { canViewMaintenance, canViewFuel } from './lib/permissions'
 
 function App() {
   return (
@@ -35,9 +37,13 @@ function App() {
             <Route path="/fleet/:vehicleId" element={<VehicleDetailsScreen />} />
             <Route path="/trips" element={<TripManagement />} />
             <Route path="/trips/:tripId" element={<TripDetailsScreen />} />
-            <Route path="/maintenance" element={<MaintenanceManagement />} />
-            <Route path="/maintenance/:maintenanceId" element={<MaintenanceDetailsScreen />} />
-            <Route path="/expenses" element={<FuelExpenseManagement />} />
+            <Route element={<RoleGuard allow={canViewMaintenance} />}>
+              <Route path="/maintenance" element={<MaintenanceManagement />} />
+              <Route path="/maintenance/:maintenanceId" element={<MaintenanceDetailsScreen />} />
+            </Route>
+            <Route element={<RoleGuard allow={canViewFuel} />}>
+              <Route path="/expenses" element={<FuelExpenseManagement />} />
+            </Route>
             <Route path="/analytics" element={<AnalyticsScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
             <Route path="/drivers" element={<DriversScreen />} />

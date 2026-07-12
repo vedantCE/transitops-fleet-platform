@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import transitopsIcon from '../assets/transitops-icon.png'
+import { canViewFuel, canViewMaintenance } from '../lib/permissions'
+import type { UserRole } from '../types/auth'
 
 interface SidebarProps {
   activeTab: string
@@ -9,6 +11,7 @@ interface SidebarProps {
   setLayoutSearchQuery: (q: string) => void
   onSearchSubmit: () => void
   userName: string
+  userRole?: UserRole
 }
 
 export default function Sidebar({
@@ -19,6 +22,7 @@ export default function Sidebar({
   setLayoutSearchQuery,
   onSearchSubmit,
   userName,
+  userRole,
 }: SidebarProps) {
   // Persistent Collapsible State
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -40,8 +44,8 @@ export default function Sidebar({
 
   const navItemsManagement = [
     { name: 'Analytics', icon: 'leaderboard' },
-    { name: 'Maintenance', icon: 'build' },
-    { name: 'Fuel & Expenses', icon: 'local_gas_station' },
+    ...(canViewMaintenance(userRole) ? [{ name: 'Maintenance', icon: 'build' }] : []),
+    ...(canViewFuel(userRole) ? [{ name: 'Fuel & Expenses', icon: 'local_gas_station' }] : []),
     { name: 'Settings', icon: 'settings' },
   ]
 

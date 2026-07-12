@@ -175,6 +175,10 @@ export default function TripManagement() {
       setModalError('Please enter the final odometer and fuel consumed.')
       return
     }
+    if (Number(finalOdometer) <= completingVehicleOdometer) {
+      setModalError(`Final odometer must be greater than the vehicle's current odometer (${completingVehicleOdometer.toLocaleString()} km).`)
+      return
+    }
 
     setIsFinalizing(true)
     try {
@@ -183,16 +187,14 @@ export default function TripManagement() {
         fuelConsumed: Number(fuelConsumed),
       })
 
-      if (fuelCost) {
-        await createFuelLog({
-          vehicleId: completingTrip.vehicleId,
-          tripId: completingTrip.id,
-          liters: Number(fuelConsumed),
-          cost: Number(fuelCost),
-        }).catch(() => {
-          // Trip completion already succeeded; a failed fuel log shouldn't block the flow.
-        })
-      }
+      await createFuelLog({
+        vehicleId: completingTrip.vehicleId,
+        tripId: completingTrip.id,
+        liters: Number(fuelConsumed),
+        cost: fuelCost ? Number(fuelCost) : 0,
+      }).catch(() => {
+        // Trip completion already succeeded; a failed fuel log shouldn't block the flow.
+      })
 
       setIsModalOpen(false)
       setCompletingTrip(null)
@@ -494,7 +496,8 @@ export default function TripManagement() {
                       value={finalOdometer}
                       onChange={(e) => setFinalOdometer(e.target.value)}
                       className="w-full bg-white border border-black/5 rounded-xl px-4 py-3 focus:border-industrial-blue focus:ring-1 focus:ring-industrial-blue outline-none text-sm font-mono"
-                      placeholder={`must be ≥ ${completingVehicleOdometer}`}
+                      placeholder={`must be > ${completingVehicleOdometer}`}
+                      min={completingVehicleOdometer + 1}
                       type="number"
                     />
                   </div>

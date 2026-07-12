@@ -138,12 +138,21 @@ export default function TripDetailsScreen() {
       setCompleteError('Please enter the final odometer and fuel consumed.')
       return
     }
+    if (vehicle && Number(finalOdometer) <= vehicle.odometer) {
+      setCompleteError(`Final odometer must be greater than the vehicle's current odometer (${vehicle.odometer} km).`)
+      return
+    }
     setIsActing(true)
     try {
       const updated = await completeTrip(trip.id, { finalOdometer: Number(finalOdometer), fuelConsumed: Number(fuelConsumed) })
-      if (fuelCost) {
-        await createFuelLog({ vehicleId: trip.vehicleId, tripId: trip.id, liters: Number(fuelConsumed), cost: Number(fuelCost) }).catch(() => {})
-      }
+      await createFuelLog({
+        vehicleId: trip.vehicleId,
+        tripId: trip.id,
+        liters: Number(fuelConsumed),
+        cost: fuelCost ? Number(fuelCost) : 0,
+      }).catch(() => {
+        // Trip completion already succeeded; a failed fuel log shouldn't block the flow.
+      })
       setTrip(updated)
       const v = await getVehicle(updated.vehicleId).catch(() => null)
       setVehicle(v)
@@ -221,7 +230,7 @@ export default function TripDetailsScreen() {
             <form onSubmit={handleCompleteSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Final Odometer (km)</label>
-                <input value={finalOdometer} onChange={(e) => setFinalOdometer(e.target.value)} type="number" className="w-full px-4 py-2.5 border border-black/5 bg-dashboard-canvas/40 rounded-xl outline-none font-mono" placeholder={vehicle ? `≥ ${vehicle.odometer}` : ''} />
+                <input value={finalOdometer} onChange={(e) => setFinalOdometer(e.target.value)} type="number" min={vehicle ? vehicle.odometer + 1 : undefined} className="w-full px-4 py-2.5 border border-black/5 bg-dashboard-canvas/40 rounded-xl outline-none font-mono" placeholder={vehicle ? `> ${vehicle.odometer}` : ''} />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Fuel Consumed (L)</label>
