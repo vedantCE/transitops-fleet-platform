@@ -7,6 +7,7 @@ interface SidebarProps {
   layoutSearchQuery: string
   setLayoutSearchQuery: (q: string) => void
   onSearchSubmit: () => void
+  userName: string
 }
 
 export default function Sidebar({
@@ -16,6 +17,7 @@ export default function Sidebar({
   layoutSearchQuery,
   setLayoutSearchQuery,
   onSearchSubmit,
+  userName,
 }: SidebarProps) {
   // Persistent Collapsible State
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -191,10 +193,10 @@ export default function Sidebar({
                 isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-4 py-2.5'
               }`}
               onClick={() => handleNavClick('Settings')}
-              title={isCollapsed ? 'Fleet Manager' : undefined}
+              title={isCollapsed ? userName : undefined}
             >
               <span className="material-symbols-outlined text-[20px] shrink-0">account_circle</span>
-              {!isCollapsed && <span className="truncate">Fleet Manager</span>}
+              {!isCollapsed && <span className="truncate">{userName}</span>}
             </button>
             <button
               className={`w-full flex items-center rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-all duration-200 font-medium text-sm text-left cursor-pointer ${

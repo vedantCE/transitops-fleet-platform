@@ -1,127 +1,106 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
+import { listMaintenanceLogs, createMaintenanceLog, closeMaintenanceLog } from '../../services/maintenance'
+import { listVehicles } from '../../services/vehicles'
+import { getApiErrorMessage } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
+import { canManageMaintenance } from '../../lib/permissions'
+import type { MaintenanceLog, MaintenanceStatus, Vehicle } from '../../types'
 
-interface MaintenanceRecord {
-  id: string
-  vehicleId: string
-  vehicleType: string
-  service: string
-  cost: number
-  date: string
-  status: 'Active' | 'Completed'
-}
+const STATUS_LABELS: Record<MaintenanceStatus, string> = { ACTIVE: 'Active', CLOSED: 'Completed' }
 
 export default function MaintenanceManagement() {
   const { setIsMobileMenuOpen } = useOutletContext<{ setIsMobileMenuOpen: React.Dispatch<React.SetStateAction<boolean>> }>()
   const navigate = useNavigate()
-  
-  // Status Filter State
-  const [statusFilter, setStatusFilter] = useState('All')
+  const { user } = useAuth()
+  const canWrite = canManageMaintenance(user?.role)
 
-  // Mock list of maintenance records from Stitch mockup
-  const initialRecords: MaintenanceRecord[] = [
-    {
-      id: 'MNT001',
-      vehicleId: 'EV-TRAN-901',
-      vehicleType: 'Electric Bus',
-      service: 'Battery Diagnostics',
-      cost: 450.0,
-      date: '24 Oct 2023',
-      status: 'Active',
-    },
-    {
-      id: 'MNT002',
-      vehicleId: 'SH-COMM-223',
-      vehicleType: 'Shuttle',
-      service: 'Tire Replacement',
-      cost: 820.0,
-      date: '23 Oct 2023',
-      status: 'Completed',
-    },
-    {
-      id: 'MNT003',
-      vehicleId: 'EV-TRAN-904',
-      vehicleType: 'Electric Bus',
-      service: 'Brake System Flush',
-      cost: 1200.0,
-      date: '22 Oct 2023',
-      status: 'Active',
-    },
-  ]
+  const [statusFilter, setStatusFilter] = useState<'All' | MaintenanceStatus>('All')
 
-  const [records, setRecords] = useState<MaintenanceRecord[]>(initialRecords)
+  const [records, setRecords] = useState<MaintenanceLog[]>([])
+  const [availableVehicles, setAvailableVehicles] = useState<Vehicle[]>([])
+  const [vehiclesInShopCount, setVehiclesInShopCount] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [busyId, setBusyId] = useState<string | null>(null)
 
   // Log Service Record Form states
-  const [vehicleId, setVehicleId] = useState('Select vehicle...')
+  const [vehicleId, setVehicleId] = useState('')
   const [serviceType, setServiceType] = useState('Routine Checkup')
   const [serviceCost, setServiceCost] = useState('')
-  const [serviceDate, setServiceDate] = useState('')
   const [notes, setNotes] = useState('')
+  const [formError, setFormError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleLogServiceRecord = (e: React.FormEvent) => {
+  const fetchAll = async () => {
+    setIsLoading(true)
+    setLoadError('')
+    try {
+      const [logs, vehicles, inShop] = await Promise.all([
+        listMaintenanceLogs({ limit: 100, sortBy: 'createdAt', sortOrder: 'desc' }),
+        listVehicles({ status: 'AVAILABLE', limit: 100 }),
+        listVehicles({ status: 'IN_SHOP', limit: 1 }),
+      ])
+      setRecords(logs.maintenanceLogs)
+      setAvailableVehicles(vehicles.vehicles)
+      setVehiclesInShopCount(inShop.pagination.total)
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err, 'Failed to load maintenance records'))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAll()
+  }, [])
+
+  const handleLogServiceRecord = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError('')
 
-    if (vehicleId === 'Select vehicle...') {
-      alert('Please select a valid vehicle.')
+    if (!vehicleId) {
+      setFormError('Please select a vehicle.')
       return
     }
 
-    const typeMapping: Record<string, string> = {
-      'EV-TRAN-901': 'Electric Bus',
-      'SH-COMM-223': 'Shuttle',
-      'EV-TRAN-904': 'Electric Bus',
-      'TR-HAUL-556': 'Maintenance Truck',
-    }
-
-    const costNum = serviceCost ? Number(serviceCost) : 0
-    const formattedDate = serviceDate
-      ? new Date(serviceDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-      : 'Today'
-
-    const nextIdNum = records.length + 1
-    const nextId = `MNT${String(nextIdNum).padStart(3, '0')}`
-
-    const newRecord: MaintenanceRecord = {
-      id: nextId,
-      vehicleId,
-      vehicleType: typeMapping[vehicleId] || 'Commercial Vehicle',
-      service: serviceType,
-      cost: costNum,
-      date: formattedDate,
-      status: 'Active',
-    }
-
-    setRecords([newRecord, ...records])
-
-    // Reset Form
-    setVehicleId('Select vehicle...')
-    setServiceType('Routine Checkup')
-    setServiceCost('')
-    setServiceDate('')
-    setNotes('')
-  }
-
-  const handleCloseMaintenance = (recordId: string) => {
-    setRecords(
-      records.map(r => {
-        if (r.id === recordId) {
-          return { ...r, status: 'Completed' }
-        }
-        return r
+    setIsSubmitting(true)
+    try {
+      await createMaintenanceLog({
+        vehicleId,
+        description: notes.trim() ? `${serviceType}: ${notes.trim()}` : serviceType,
+        cost: serviceCost ? Number(serviceCost) : 0,
       })
-    )
+
+      setVehicleId('')
+      setServiceType('Routine Checkup')
+      setServiceCost('')
+      setNotes('')
+      fetchAll()
+    } catch (err) {
+      setFormError(getApiErrorMessage(err, 'Failed to log maintenance record'))
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  // Stats Counters
-  const activeCount = records.filter(r => r.status === 'Active').length
-  const completedCount = records.filter(r => r.status === 'Completed').length
+  const handleCloseMaintenance = async (recordId: string) => {
+    setBusyId(recordId)
+    try {
+      await closeMaintenanceLog(recordId)
+      fetchAll()
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err, 'Failed to close maintenance record'))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const activeCount = records.filter((r) => r.status === 'ACTIVE').length
+  const completedCount = records.filter((r) => r.status === 'CLOSED').length
   const totalCostVal = records.reduce((sum, r) => sum + r.cost, 0)
 
-  // Filtered records
-  const filteredRecords = records.filter(r => {
-    if (statusFilter === 'All') return true
-    return r.status === statusFilter
-  })
+  const filteredRecords = records.filter((r) => statusFilter === 'All' || r.status === statusFilter)
 
   return (
     <>
@@ -135,71 +114,54 @@ export default function MaintenanceManagement() {
             <h2 className="text-lg font-bold text-on-surface font-headline-sm">Maintenance Management</h2>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <button className="p-2 rounded-full hover:bg-black/5 transition-all relative">
-            <span className="material-symbols-outlined text-on-surface-variant">notifications</span>
-            <span className="absolute top-2 right-2 w-2 h-2 bg-error-red rounded-full"></span>
-          </button>
-          <div className="h-6 w-[1px] bg-outline-variant mx-2 hidden sm:block"></div>
-          <div className="hidden sm:block">
-            <p className="text-sm font-semibold text-on-surface-variant font-body-md">Command Center</p>
-          </div>
-        </div>
       </header>
 
       {/* CONTENT CANVAS */}
       <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 custom-scrollbar">
-        {/* Header Description & Actions */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
             <h2 className="text-2xl font-bold text-on-surface font-headline-lg">Maintenance Management</h2>
             <div className="flex space-x-4 mt-2">
               <span className="flex items-center text-xs text-on-surface-variant">
                 <span className="w-2.5 h-2.5 rounded-full bg-safety-orange mr-2"></span>
-                Vehicles In Shop: <strong className="ml-1 text-on-surface font-mono">5</strong>
+                Vehicles In Shop: <strong className="ml-1 text-on-surface font-mono">{vehiclesInShopCount}</strong>
               </span>
               <span className="flex items-center text-xs text-on-surface-variant">
                 <span className="w-2.5 h-2.5 rounded-full bg-industrial-blue mr-2"></span>
-                Active Maintenance: <strong className="ml-1 text-on-surface font-mono">5</strong>
+                Active Maintenance: <strong className="ml-1 text-on-surface font-mono">{activeCount}</strong>
               </span>
             </div>
           </div>
-          <div className="flex space-x-3">
-            <button
-              onClick={() => alert('Report exported.')}
-              className="flex items-center px-4 py-2 bg-white border border-black/5 text-on-surface font-medium hover:bg-black/5 transition-colors rounded-xl text-xs cursor-pointer"
-            >
-              <span className="material-symbols-outlined mr-2 text-sm">download</span> Export Report
-            </button>
-            <button
-              onClick={() => alert('Service scheduled.')}
-              className="flex items-center px-4 py-2 bg-background text-white font-medium hover:opacity-90 transition-colors rounded-xl text-xs cursor-pointer"
-            >
-              <span className="material-symbols-outlined mr-2 text-sm">add</span> Schedule Service
-            </button>
-          </div>
         </div>
+
+        {loadError && (
+          <div className="bg-error-red/10 border border-error-red/20 text-error-red text-sm rounded-xl px-4 py-3">{loadError}</div>
+        )}
 
         {/* Columns Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
+
           {/* Left Column: Log Service Record */}
+          {canWrite && (
           <div className="lg:col-span-5 bg-white p-6 rounded-2xl border border-black/5 shadow-sm">
             <h3 className="text-base font-bold text-on-surface mb-6 font-headline-sm">Log Service Record</h3>
             <form onSubmit={handleLogServiceRecord} className="space-y-4 font-body-sm text-sm">
+              {formError && (
+                <div className="bg-error-red/10 border border-error-red/20 text-error-red text-xs rounded-xl px-4 py-3">{formError}</div>
+              )}
               <div className="space-y-1">
-                <label className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider font-label-sm">Vehicle ID / Name</label>
+                <label className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider font-label-sm">Vehicle</label>
                 <select
                   value={vehicleId}
                   onChange={(e) => setVehicleId(e.target.value)}
                   className="w-full bg-dashboard-canvas/40 border border-black/5 rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-industrial-blue outline-none cursor-pointer"
                 >
-                  <option>Select vehicle...</option>
-                  <option>EV-TRAN-901</option>
-                  <option>SH-COMM-223</option>
-                  <option>EV-TRAN-904</option>
-                  <option>TR-HAUL-556</option>
+                  <option value="">Select vehicle...</option>
+                  {availableVehicles.map((v) => (
+                    <option key={v.id} value={v.id}>{v.registrationNumber} — {v.name}</option>
+                  ))}
                 </select>
+                <p className="text-[10px] text-on-surface-variant">Only vehicles currently Available can enter maintenance.</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -217,7 +179,7 @@ export default function MaintenanceManagement() {
                   </select>
                 </div>
                 <div className="space-y-1 font-mono">
-                  <label className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider font-label-sm font-sans">Service Cost ($)</label>
+                  <label className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider font-label-sm font-sans">Service Cost (₹)</label>
                   <input
                     value={serviceCost}
                     onChange={(e) => setServiceCost(e.target.value)}
@@ -226,15 +188,6 @@ export default function MaintenanceManagement() {
                     type="number"
                   />
                 </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider font-label-sm">Service Date</label>
-                <input
-                  value={serviceDate}
-                  onChange={(e) => setServiceDate(e.target.value)}
-                  className="w-full bg-dashboard-canvas/40 border border-black/5 rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-industrial-blue outline-none cursor-pointer"
-                  type="date"
-                />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] text-on-surface-variant uppercase font-bold tracking-wider font-label-sm">Maintenance Notes</label>
@@ -251,21 +204,23 @@ export default function MaintenanceManagement() {
                   <span className="material-symbols-outlined text-industrial-blue">info</span>
                   <div>
                     <p className="font-bold text-on-surface font-sans">Impact on Operations</p>
-                    <p className="text-on-surface-variant text-xs mt-0.5 leading-relaxed font-body-sm">Adding this record will mark the vehicle as "Under Maintenance" and remove it from active routing.</p>
+                    <p className="text-on-surface-variant text-xs mt-0.5 leading-relaxed font-body-sm">Adding this record will mark the vehicle as "In Shop" and remove it from dispatch selection.</p>
                   </div>
                 </div>
               </div>
               <button
                 type="submit"
-                className="w-full py-3.5 bg-background text-white font-bold rounded-xl hover:opacity-90 transition-all shadow-lg shadow-background/25 cursor-pointer uppercase tracking-widest text-[10px]"
+                disabled={isSubmitting}
+                className="w-full py-3.5 bg-background text-white font-bold rounded-xl hover:opacity-90 transition-all shadow-lg shadow-background/25 cursor-pointer uppercase tracking-widest text-[10px] disabled:opacity-60"
               >
-                Register Record
+                {isSubmitting ? 'Registering...' : 'Register Record'}
               </button>
             </form>
           </div>
+          )}
 
           {/* Right Column: Service Summary & Logs */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className={canWrite ? 'lg:col-span-7 space-y-6' : 'lg:col-span-12 space-y-6'}>
             {/* Quick Summary Cards */}
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-white border border-black/5 p-5 rounded-2xl shadow-sm">
@@ -277,8 +232,8 @@ export default function MaintenanceManagement() {
                 <p className="text-2xl font-bold text-success-green mt-1 font-mono">{String(completedCount).padStart(3, '0')}</p>
               </div>
               <div className="bg-white border border-black/5 p-5 rounded-2xl shadow-sm">
-                <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm font-sans">Total Cost (MTD)</p>
-                <p className="text-2xl font-bold text-on-surface mt-1 font-mono">${totalCostVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm font-sans">Total Cost</p>
+                <p className="text-2xl font-bold text-on-surface mt-1 font-mono">₹{totalCostVal.toLocaleString()}</p>
               </div>
             </div>
 
@@ -290,12 +245,12 @@ export default function MaintenanceManagement() {
                   <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs">filter_list</span>
                   <select
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
+                    onChange={(e) => setStatusFilter(e.target.value as 'All' | MaintenanceStatus)}
                     className="text-xs bg-dashboard-canvas/40 border border-black/5 rounded-lg pl-8 pr-4 py-1.5 focus:ring-1 focus:ring-industrial-blue outline-none cursor-pointer font-bold font-label-sm"
                   >
                     <option value="All">Status: All</option>
-                    <option value="Active">Active</option>
-                    <option value="Completed">Completed</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="CLOSED">Completed</option>
                   </select>
                 </div>
               </div>
@@ -312,59 +267,55 @@ export default function MaintenanceManagement() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 text-xs font-mono font-medium text-on-surface">
-                    {filteredRecords.map(record => (
-                      <tr key={record.id} className="hover:bg-blue-50/10 transition-colors cursor-pointer" onClick={() => navigate(`/maintenance/${record.id}`)}>
-                        <td className="px-6 py-4 font-sans">
-                          <div className="flex flex-col">
-                            <span className="font-bold text-on-surface">{record.vehicleId}</span>
-                            <span className="text-[10px] text-on-surface-variant mt-0.5">{record.vehicleType}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-on-surface-variant font-sans">{record.service}</td>
-                        <td className="px-6 py-4 font-bold text-on-surface">${record.cost.toFixed(2)}</td>
-                        <td className="px-6 py-4 text-on-surface-variant">{record.date}</td>
-                        <td className="px-6 py-4 text-center">
-                          <span className={`inline-block px-2.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
-                            record.status === 'Completed'
-                              ? 'bg-green-50 text-success-green border-success-green/10'
-                              : 'bg-amber-50 text-safety-orange border-safety-orange/10'
-                          }`}>
-                            {record.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right font-sans">
-                          {record.status === 'Active' ? (
-                            <button
-                              onClick={() => handleCloseMaintenance(record.id)}
-                              className="text-industrial-blue font-bold text-[10px] uppercase tracking-wider hover:underline cursor-pointer"
-                            >
-                              Close Maintenance
-                            </button>
-                          ) : (
-                            <button className="text-on-surface-variant hover:text-industrial-blue cursor-pointer">
-                              <span className="material-symbols-outlined text-sm">visibility</span>
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {isLoading ? (
+                      <tr><td colSpan={6} className="px-6 py-10 text-center font-sans text-on-surface-variant">Loading records...</td></tr>
+                    ) : filteredRecords.length === 0 ? (
+                      <tr><td colSpan={6} className="px-6 py-10 text-center font-sans text-on-surface-variant">No maintenance records match this filter.</td></tr>
+                    ) : (
+                      filteredRecords.map((record) => (
+                        <tr key={record.id} className="hover:bg-blue-50/10 transition-colors cursor-pointer" onClick={() => navigate(`/maintenance/${record.id}`)}>
+                          <td className="px-6 py-4 font-sans">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-on-surface">{record.vehicle.registrationNumber}</span>
+                              <span className="text-[10px] text-on-surface-variant mt-0.5">{record.vehicle.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-on-surface-variant font-sans">{record.description}</td>
+                          <td className="px-6 py-4 font-bold text-on-surface">₹{record.cost.toLocaleString()}</td>
+                          <td className="px-6 py-4 text-on-surface-variant">{new Date(record.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                          <td className="px-6 py-4 text-center">
+                            <span className={`inline-block px-2.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
+                              record.status === 'CLOSED'
+                                ? 'bg-green-50 text-success-green border-success-green/10'
+                                : 'bg-amber-50 text-safety-orange border-safety-orange/10'
+                            }`}>
+                              {STATUS_LABELS[record.status]}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right font-sans" onClick={(e) => e.stopPropagation()}>
+                            {record.status === 'ACTIVE' && canWrite ? (
+                              <button
+                                onClick={() => handleCloseMaintenance(record.id)}
+                                disabled={busyId === record.id}
+                                className="text-industrial-blue font-bold text-[10px] uppercase tracking-wider hover:underline cursor-pointer disabled:opacity-50"
+                              >
+                                {busyId === record.id ? 'Closing...' : 'Close Maintenance'}
+                              </button>
+                            ) : (
+                              <button onClick={() => navigate(`/maintenance/${record.id}`)} className="text-on-surface-variant hover:text-industrial-blue cursor-pointer">
+                                <span className="material-symbols-outlined text-sm">visibility</span>
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
               {/* Table Footer */}
               <div className="px-6 py-4 border-t border-black/5 flex justify-between items-center text-xs bg-gray-50/20 font-body-sm">
                 <p className="text-on-surface-variant">Showing {filteredRecords.length} of {records.length} records</p>
-                <div className="flex items-center gap-1.5">
-                  <button className="p-1.5 border border-gray-200 rounded-lg hover:bg-dashboard-canvas transition-colors disabled:opacity-30" disabled>
-                    <span className="material-symbols-outlined text-[16px]">chevron_left</span>
-                  </button>
-                  <button className="w-8 h-8 flex items-center justify-center bg-background text-white rounded-lg font-bold shadow-md">
-                    1
-                  </button>
-                  <button className="p-1.5 border border-gray-200 rounded-lg hover:bg-dashboard-canvas transition-colors disabled:opacity-30" disabled>
-                    <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-                  </button>
-                </div>
               </div>
             </div>
           </div>

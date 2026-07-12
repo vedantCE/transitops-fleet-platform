@@ -1,21 +1,31 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
+import { listVehicles, createVehicle } from '../../services/vehicles'
+import { getApiErrorMessage } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
+import { canManageVehicles } from '../../lib/permissions'
+import type { Vehicle, VehicleStatus } from '../../types'
 
-interface Vehicle {
-  registrationNumber: string
-  vehicleId: string
-  model: string
-  type: string
-  capacity: string
-  odometer: string
-  cost: string
-  status: 'Available' | 'On Trip' | 'In Shop' | 'Retired'
+const STATUS_LABELS: Record<VehicleStatus, string> = {
+  AVAILABLE: 'Available',
+  ON_TRIP: 'On Trip',
+  IN_SHOP: 'In Shop',
+  RETIRED: 'Retired',
+}
+
+const STATUS_BY_LABEL: Record<string, VehicleStatus> = {
+  Available: 'AVAILABLE',
+  'On Trip': 'ON_TRIP',
+  'In Shop': 'IN_SHOP',
+  Retired: 'RETIRED',
 }
 
 export default function FleetRegistry() {
   const { setIsMobileMenuOpen } = useOutletContext<{ setIsMobileMenuOpen: React.Dispatch<React.SetStateAction<boolean>> }>()
   const navigate = useNavigate()
-  
+  const { user } = useAuth()
+  const canWrite = canManageVehicles(user?.role)
+
   // Fleet drawer open/close
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
@@ -24,119 +34,93 @@ export default function FleetRegistry() {
   const [vehicleTypeFilter, setVehicleTypeFilter] = useState('All Types')
   const [statusFilter, setStatusFilter] = useState('All Status')
 
-  // Mock list of vehicles matching Stitch mockup
-  const initialVehicles: Vehicle[] = [
-    {
-      registrationNumber: 'GJ05AB1234',
-      vehicleId: 'VAN-05',
-      model: 'Tata Winger',
-      type: 'Van',
-      capacity: '500 kg',
-      odometer: '74,000 km',
-      cost: '₹4,00,000',
-      status: 'Available',
-    },
-    {
-      registrationNumber: 'GJ05CD5678',
-      vehicleId: 'TRUCK-02',
-      model: 'Tata Prima',
-      type: 'Truck',
-      capacity: '5,000 kg',
-      odometer: '112,000 km',
-      cost: '₹20,00,000',
-      status: 'On Trip',
-    },
-    {
-      registrationNumber: 'GJ05EF9012',
-      vehicleId: 'ACE-05',
-      model: 'Tata Ace',
-      type: 'Mini Truck',
-      capacity: '750 kg',
-      odometer: '48,000 km',
-      cost: '₹6,00,000',
-      status: 'In Shop',
-    },
-    {
-      registrationNumber: 'GJ05GH3456',
-      vehicleId: 'TRK-09',
-      model: 'BharatBenz 3528C',
-      type: 'Truck',
-      capacity: '10,000 kg',
-      odometer: '98,000 km',
-      cost: '₹45,00,000',
-      status: 'Retired',
-    },
-  ]
-
-  const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles)
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [total, setTotal] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
 
   // Add Vehicle Form States
   const [newRegNumber, setNewRegNumber] = useState('')
-  const [newVehicleId, setNewVehicleId] = useState('')
   const [newType, setNewType] = useState('Van')
   const [newModel, setNewModel] = useState('')
   const [newCapacity, setNewCapacity] = useState('')
   const [newOdometer, setNewOdometer] = useState('')
   const [newCost, setNewCost] = useState('')
+  const [newRegion, setNewRegion] = useState('')
+  const [formError, setFormError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleFilterApply = () => {
-    let filtered = [...initialVehicles]
-
-    if (searchQuery.trim() !== '') {
-      const q = searchQuery.toLowerCase()
-      filtered = filtered.filter(
-        v =>
-          v.registrationNumber.toLowerCase().includes(q) ||
-          v.vehicleId.toLowerCase().includes(q) ||
-          v.model.toLowerCase().includes(q)
-      )
+  const fetchVehicles = async () => {
+    setIsLoading(true)
+    setLoadError('')
+    try {
+      const { vehicles: data, pagination } = await listVehicles({
+        limit: 100,
+        search: searchQuery.trim() || undefined,
+        type: vehicleTypeFilter !== 'All Types' ? vehicleTypeFilter : undefined,
+        status: statusFilter !== 'All Status' ? STATUS_BY_LABEL[statusFilter] : undefined,
+      })
+      setVehicles(data)
+      setTotal(pagination.total)
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err, 'Failed to load vehicles'))
+    } finally {
+      setIsLoading(false)
     }
-
-    if (vehicleTypeFilter !== 'All Types') {
-      filtered = filtered.filter(
-        v => v.type.toLowerCase() === vehicleTypeFilter.toLowerCase()
-      )
-    }
-
-    if (statusFilter !== 'All Status') {
-      filtered = filtered.filter(
-        v => v.status.toLowerCase() === statusFilter.toLowerCase()
-      )
-    }
-
-    setVehicles(filtered)
   }
 
-  const handleRegisterVehicle = (e: React.FormEvent) => {
-    e.preventDefault()
+  useEffect(() => {
+    fetchVehicles()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-    if (!newRegNumber || !newVehicleId || !newModel) {
-      alert('Please fill out all required fields.')
+  // Vehicle type is free text on the backend, so the filter's options are
+  // derived from whatever is actually in the loaded data rather than a
+  // fixed guess list.
+  const availableTypes = useMemo(
+    () => Array.from(new Set(vehicles.map((v) => v.type))).sort(),
+    [vehicles]
+  )
+
+  const handleFilterApply = () => {
+    fetchVehicles()
+  }
+
+  const handleRegisterVehicle = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setFormError('')
+
+    if (!newRegNumber || !newModel) {
+      setFormError('Please fill out all required fields.')
       return
     }
 
-    const newVehicle: Vehicle = {
-      registrationNumber: newRegNumber.toUpperCase(),
-      vehicleId: newVehicleId.toUpperCase(),
-      model: newModel,
-      type: newType,
-      capacity: newCapacity ? `${newCapacity} kg` : '0 kg',
-      odometer: newOdometer ? `${Number(newOdometer).toLocaleString()} km` : '0 km',
-      cost: newCost ? `₹${Number(newCost).toLocaleString()}` : '₹0',
-      status: 'Available',
+    setIsSubmitting(true)
+    try {
+      await createVehicle({
+        registrationNumber: newRegNumber.toUpperCase(),
+        name: newModel,
+        type: newType,
+        maxLoadCapacity: Number(newCapacity) || 0,
+        odometer: newOdometer ? Number(newOdometer) : 0,
+        acquisitionCost: Number(newCost) || 0,
+        region: newRegion.trim() || undefined,
+      })
+
+      setIsDrawerOpen(false)
+      setNewRegNumber('')
+      setNewType('Van')
+      setNewModel('')
+      setNewCapacity('')
+      setNewOdometer('')
+      setNewCost('')
+      setNewRegion('')
+      fetchVehicles()
+    } catch (err) {
+      setFormError(getApiErrorMessage(err, 'Failed to register vehicle'))
+    } finally {
+      setIsSubmitting(false)
     }
-
-    setVehicles([newVehicle, ...vehicles])
-    setIsDrawerOpen(false)
-
-    // Reset fields
-    setNewRegNumber('')
-    setNewVehicleId('')
-    setNewType('Van')
-    setNewModel('')
-    setNewCapacity('')
-    setNewOdometer('')
-    setNewCost('')
   }
 
   return (
@@ -174,13 +158,15 @@ export default function FleetRegistry() {
             <h2 className="text-2xl font-bold text-on-surface font-headline-lg">Fleet Registry</h2>
             <p className="text-sm text-on-surface-variant mt-1 font-body-md">Register, track and manage the organization's transport assets.</p>
           </div>
-          <button
-            onClick={() => setIsDrawerOpen(true)}
-            className="bg-background text-white px-5 py-2.5 rounded-xl font-bold text-xs hover:opacity-90 transition-all flex items-center gap-2 shadow-lg cursor-pointer uppercase tracking-wider"
-          >
-            <span className="material-symbols-outlined text-[18px]">add</span>
-            Add Asset
-          </button>
+          {canWrite && (
+            <button
+              onClick={() => setIsDrawerOpen(true)}
+              className="bg-background text-white px-5 py-2.5 rounded-xl font-bold text-xs hover:opacity-90 transition-all flex items-center gap-2 shadow-lg cursor-pointer uppercase tracking-wider"
+            >
+              <span className="material-symbols-outlined text-[18px]">add</span>
+              Add Asset
+            </button>
+          )}
         </div>
 
         {/* Filter Controls */}
@@ -191,7 +177,7 @@ export default function FleetRegistry() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-dashboard-canvas/50 border-none rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-success-green outline-none"
-              placeholder="Search Reg, Vehicle ID, Model..."
+              placeholder="Search Reg Number or Model..."
               type="text"
             />
           </div>
@@ -203,9 +189,9 @@ export default function FleetRegistry() {
               className="w-full bg-dashboard-canvas/50 border-none rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-success-green outline-none cursor-pointer"
             >
               <option>All Types</option>
-              <option>Van</option>
-              <option>Truck</option>
-              <option>Mini Truck</option>
+              {availableTypes.map((type) => (
+                <option key={type}>{type}</option>
+              ))}
             </select>
           </div>
           <div className="flex-1 min-w-[150px] space-y-1">
@@ -231,6 +217,12 @@ export default function FleetRegistry() {
           </button>
         </div>
 
+        {loadError && (
+          <div className="bg-error-red/10 border border-error-red/20 text-error-red text-sm rounded-xl px-4 py-3">
+            {loadError}
+          </div>
+        )}
+
         {/* Vehicle Registry Grid */}
         <div className="bg-white rounded-2xl overflow-hidden border border-black/5 shadow-sm">
           <div className="overflow-x-auto">
@@ -238,7 +230,6 @@ export default function FleetRegistry() {
               <thead className="bg-dashboard-canvas text-on-surface-variant text-[11px] uppercase tracking-wider font-label-sm">
                 <tr>
                   <th className="px-6 py-4 font-bold border-b border-black/5">Reg Number</th>
-                  <th className="px-6 py-4 font-bold border-b border-black/5">Vehicle ID</th>
                   <th className="px-6 py-4 font-bold border-b border-black/5">Model</th>
                   <th className="px-6 py-4 font-bold border-b border-black/5">Type</th>
                   <th className="px-6 py-4 font-bold border-b border-black/5 text-right">Capacity</th>
@@ -248,41 +239,53 @@ export default function FleetRegistry() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 text-xs font-mono font-medium text-on-surface">
-                {vehicles.map(vehicle => (
-                  <tr key={vehicle.registrationNumber} className="hover:bg-blue-50/10 transition-colors cursor-pointer" onClick={() => navigate(`/fleet/${vehicle.vehicleId}`)}>
-                    <td className="px-6 py-4 font-sans font-bold text-on-surface">{vehicle.registrationNumber}</td>
-                    <td className="px-6 py-4 font-bold text-industrial-blue">{vehicle.vehicleId}</td>
-                    <td className="px-6 py-4 font-sans text-on-surface-variant">{vehicle.model}</td>
-                    <td className="px-6 py-4 font-sans">{vehicle.type}</td>
-                    <td className="px-6 py-4 text-right">{vehicle.capacity}</td>
-                    <td className="px-6 py-4 text-right">{vehicle.odometer}</td>
-                    <td className="px-6 py-4 text-right text-on-surface font-sans">{vehicle.cost}</td>
-                    <td className="px-6 py-4 text-center font-sans">
-                      <span className={`inline-block px-2.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
-                        vehicle.status === 'Available'
-                          ? 'bg-green-50 text-success-green border-success-green/10'
-                          : vehicle.status === 'On Trip'
-                            ? 'bg-blue-50 text-industrial-blue border-industrial-blue/10'
-                            : vehicle.status === 'In Shop'
-                              ? 'bg-amber-50 text-safety-orange border-safety-orange/10'
-                              : 'bg-red-50 text-error-red border-error-red/10'
-                      }`}>
-                        {vehicle.status}
-                      </span>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-10 text-center text-on-surface-variant font-sans">
+                      Loading vehicles...
                     </td>
                   </tr>
-                ))}
+                ) : vehicles.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-10 text-center text-on-surface-variant font-sans">
+                      No vehicles match these filters.
+                    </td>
+                  </tr>
+                ) : (
+                  vehicles.map((vehicle) => (
+                    <tr
+                      key={vehicle.id}
+                      className="hover:bg-blue-50/10 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/fleet/${vehicle.id}`)}
+                    >
+                      <td className="px-6 py-4 font-sans font-bold text-on-surface">{vehicle.registrationNumber}</td>
+                      <td className="px-6 py-4 font-sans text-on-surface-variant">{vehicle.name}</td>
+                      <td className="px-6 py-4 font-sans">{vehicle.type}</td>
+                      <td className="px-6 py-4 text-right">{vehicle.maxLoadCapacity.toLocaleString()} kg</td>
+                      <td className="px-6 py-4 text-right">{vehicle.odometer.toLocaleString()} km</td>
+                      <td className="px-6 py-4 text-right text-on-surface font-sans">₹{vehicle.acquisitionCost.toLocaleString()}</td>
+                      <td className="px-6 py-4 text-center font-sans">
+                        <span className={`inline-block px-2.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
+                          vehicle.status === 'AVAILABLE'
+                            ? 'bg-green-50 text-success-green border-success-green/10'
+                            : vehicle.status === 'ON_TRIP'
+                              ? 'bg-blue-50 text-industrial-blue border-industrial-blue/10'
+                              : vehicle.status === 'IN_SHOP'
+                                ? 'bg-amber-50 text-safety-orange border-safety-orange/10'
+                                : 'bg-red-50 text-error-red border-error-red/10'
+                        }`}>
+                          {STATUS_LABELS[vehicle.status]}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
           {/* Table Footer */}
           <div className="bg-white p-4 flex justify-between items-center text-[10px] font-bold text-on-surface-variant border-t border-black/5 font-label-sm">
-            <p className="uppercase">Showing {vehicles.length} of {vehicles.length} assets</p>
-            <div className="flex gap-2 font-sans font-normal">
-              <button className="px-3 py-1 border border-gray-200 rounded hover:bg-dashboard-canvas transition-colors disabled:opacity-50" disabled>Previous</button>
-              <button className="px-3 py-1 border border-transparent rounded bg-background text-white font-bold">1</button>
-              <button className="px-3 py-1 border border-gray-200 rounded hover:bg-dashboard-canvas transition-colors">Next</button>
-            </div>
+            <p className="uppercase">Showing {vehicles.length} of {total} assets</p>
           </div>
         </div>
       </div>
@@ -310,6 +313,11 @@ export default function FleetRegistry() {
 
             {/* Drawer Body Form */}
             <form onSubmit={handleRegisterVehicle} className="flex-1 overflow-y-auto p-6 space-y-6 font-body-sm text-sm">
+              {formError && (
+                <div className="bg-error-red/10 border border-error-red/20 text-error-red text-xs rounded-xl px-4 py-3">
+                  {formError}
+                </div>
+              )}
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm">Registration Number</label>
                 <input
@@ -322,12 +330,12 @@ export default function FleetRegistry() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm">Vehicle ID</label>
+                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm">Model</label>
                   <input
-                    value={newVehicleId}
-                    onChange={(e) => setNewVehicleId(e.target.value)}
+                    value={newModel}
+                    onChange={(e) => setNewModel(e.target.value)}
                     className="w-full px-4 py-2.5 border border-black/5 bg-dashboard-canvas/40 focus:ring-1 focus:ring-industrial-blue rounded-xl outline-none"
-                    placeholder="e.g. VAN-06"
+                    placeholder="e.g. Tata Prima 5530.S"
                     type="text"
                   />
                 </div>
@@ -341,18 +349,9 @@ export default function FleetRegistry() {
                     <option>Van</option>
                     <option>Truck</option>
                     <option>Mini Truck</option>
+                    <option>Pickup</option>
                   </select>
                 </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm">Model</label>
-                <input
-                  value={newModel}
-                  onChange={(e) => setNewModel(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-black/5 bg-dashboard-canvas/40 focus:ring-1 focus:ring-industrial-blue rounded-xl outline-none"
-                  placeholder="e.g. Tata Prima 5530.S"
-                  type="text"
-                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -376,15 +375,27 @@ export default function FleetRegistry() {
                   />
                 </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm">Asset Cost (INR)</label>
-                <input
-                  value={newCost}
-                  onChange={(e) => setNewCost(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-black/5 bg-dashboard-canvas/40 focus:ring-1 focus:ring-industrial-blue rounded-xl outline-none"
-                  placeholder="e.g. 1500000"
-                  type="number"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm">Asset Cost (INR)</label>
+                  <input
+                    value={newCost}
+                    onChange={(e) => setNewCost(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-black/5 bg-dashboard-canvas/40 focus:ring-1 focus:ring-industrial-blue rounded-xl outline-none"
+                    placeholder="e.g. 1500000"
+                    type="number"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider font-label-sm">Region</label>
+                  <input
+                    value={newRegion}
+                    onChange={(e) => setNewRegion(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-black/5 bg-dashboard-canvas/40 focus:ring-1 focus:ring-industrial-blue rounded-xl outline-none"
+                    placeholder="e.g. West"
+                    type="text"
+                  />
+                </div>
               </div>
 
               {/* Drawer Footer Actions */}
@@ -398,9 +409,10 @@ export default function FleetRegistry() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-3 bg-background text-white rounded-xl font-bold hover:opacity-90 transition-all uppercase tracking-wider text-xs cursor-pointer shadow-md"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-3 bg-background text-white rounded-xl font-bold hover:opacity-90 transition-all uppercase tracking-wider text-xs cursor-pointer shadow-md disabled:opacity-60"
                 >
-                  Register Asset
+                  {isSubmitting ? 'Registering...' : 'Register Asset'}
                 </button>
               </div>
             </form>

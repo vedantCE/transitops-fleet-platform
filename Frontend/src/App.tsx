@@ -16,30 +16,35 @@ import AccessRestrictedScreen from './features/restricted/AccessRestrictedScreen
 import SearchResultsScreen from './features/search/SearchResultsScreen'
 import PageNotFoundScreen from './features/errors/PageNotFoundScreen'
 import MainLayout from './components/MainLayout'
+import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/restricted" element={<AccessRestrictedScreen />} />
-        
-        {/* Layout Wrapped Routes */}
-        <Route element={<MainLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/fleet" element={<FleetRegistry />} />
-          <Route path="/fleet/:vehicleId" element={<VehicleDetailsScreen />} />
-          <Route path="/trips" element={<TripManagement />} />
-          <Route path="/trips/:tripId" element={<TripDetailsScreen />} />
-          <Route path="/maintenance" element={<MaintenanceManagement />} />
-          <Route path="/maintenance/:maintenanceId" element={<MaintenanceDetailsScreen />} />
-          <Route path="/expenses" element={<FuelExpenseManagement />} />
-          <Route path="/analytics" element={<AnalyticsScreen />} />
-          <Route path="/settings" element={<SettingsScreen />} />
-          <Route path="/drivers" element={<DriversScreen />} />
-          <Route path="/drivers/:driverId" element={<DriverDetailsScreen />} />
-          <Route path="/search" element={<SearchResultsScreen />} />
-          <Route path="*" element={<PageNotFoundScreen />} />
+
+        {/* Authenticated routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/restricted" element={<AccessRestrictedScreen />} />
+
+          {/* Layout Wrapped Routes */}
+          <Route element={<MainLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/fleet" element={<FleetRegistry />} />
+            <Route path="/fleet/:vehicleId" element={<VehicleDetailsScreen />} />
+            <Route path="/trips" element={<TripManagement />} />
+            <Route path="/trips/:tripId" element={<TripDetailsScreen />} />
+            <Route path="/maintenance" element={<MaintenanceManagement />} />
+            <Route path="/maintenance/:maintenanceId" element={<MaintenanceDetailsScreen />} />
+            <Route path="/expenses" element={<FuelExpenseManagement />} />
+            <Route path="/analytics" element={<AnalyticsScreen />} />
+            <Route path="/settings" element={<SettingsScreen />} />
+            <Route path="/drivers" element={<DriversScreen />} />
+            <Route path="/drivers/:driverId" element={<DriverDetailsScreen />} />
+            <Route path="/search" element={<SearchResultsScreen />} />
+            <Route path="*" element={<PageNotFoundScreen />} />
+          </Route>
         </Route>
       </Routes>
     </Router>

@@ -1,56 +1,65 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { getApiErrorMessage } from '../../lib/api'
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { login, isAuthenticated } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  
+
   // Validation states
   const [emailError, setEmailError] = useState(false)
   const [passwordError, setPasswordError] = useState(false)
-  
+  const [authError, setAuthError] = useState('')
+
   // Submission/loading states
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Already logged in (e.g. token still valid on refresh) — skip the form.
+  if (isAuthenticated) {
+    const redirectTo = (location.state as { from?: Location })?.from?.pathname ?? '/dashboard'
+    return <Navigate to={redirectTo} replace />
+  }
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Reset errors
     setEmailError(false)
     setPasswordError(false)
+    setAuthError('')
 
     let hasError = false
 
-    // Email must end with @transitops.io
-    if (!email.includes('@transitops.io')) {
+    if (!email.includes('@')) {
       setEmailError(true)
       hasError = true
     }
 
-    // Password must be at least 8 characters
-    if (password.length < 8) {
+    if (password.length === 0) {
       setPasswordError(true)
       hasError = true
     }
 
     if (hasError) return
 
-    // Trigger loading state
     setIsSubmitting(true)
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false)
+    try {
+      await login(email, password)
       setIsSuccess(true)
-      
-      // Redirect after showing success state for a moment
       setTimeout(() => {
         navigate('/dashboard')
-      }, 800)
-    }, 1200)
+      }, 600)
+    } catch (err) {
+      setAuthError(getApiErrorMessage(err, 'Invalid email or password'))
+      setIsSubmitting(false)
+    }
   }
 
   const togglePassword = () => {
@@ -153,7 +162,7 @@ export default function Login() {
                   emailError ? 'border-error-red/50 ring-1 ring-error-red/50' : 'border-black/5'
                 } rounded-lg focus:ring-1 focus:ring-on-background/10 focus:border-on-background/20 outline-none transition-all text-sm text-on-surface placeholder-on-surface-variant/30`}
                 id="email"
-                placeholder="name@transitops.io"
+                placeholder="name@company.com"
                 required
                 type="email"
                 value={email}
@@ -161,7 +170,7 @@ export default function Login() {
               />
               {emailError && (
                 <p className="text-error-red text-[11px] mt-1" id="emailError">
-                  Please enter a valid work email address (name@transitops.io).
+                  Please enter a valid email address.
                 </p>
               )}
             </div>
@@ -197,10 +206,16 @@ export default function Login() {
               </div>
               {passwordError && (
                 <p className="text-error-red text-[11px] mt-1" id="passwordError">
-                  Password must be at least 8 characters.
+                  Password is required.
                 </p>
               )}
             </div>
+
+            {authError && (
+              <p className="text-error-red text-xs bg-error-red/10 border border-error-red/20 rounded-lg px-3 py-2" id="authError">
+                {authError}
+              </p>
+            )}
 
             {/* Remember & Forgot */}
             <div className="flex items-center justify-between">
@@ -263,20 +278,11 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Microsoft Login */}
+          {/* Microsoft Login (not wired to a real SSO provider) */}
           <button
             type="button"
             className="w-full border border-black/5 bg-white/40 text-on-surface text-sm font-medium py-3 rounded-lg hover:bg-white/80 transition-all flex items-center justify-center gap-3 cursor-pointer"
-            onClick={() => {
-              setIsSubmitting(true)
-              setTimeout(() => {
-                setIsSubmitting(false)
-                setIsSuccess(true)
-                setTimeout(() => {
-                  navigate('/dashboard')
-                }, 800)
-              }, 1000)
-            }}
+            onClick={() => setAuthError('SSO login is not available in this environment — please sign in with email and password.')}
           >
             <svg className="w-4 h-4" viewBox="0 0 23 23">
               <rect fill="#f25022" height="10" width="10"></rect>

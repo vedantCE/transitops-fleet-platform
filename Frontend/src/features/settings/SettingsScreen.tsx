@@ -1,10 +1,21 @@
 import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import type { UserRole } from '../../types/auth'
+
+const ROLE_INFO: Record<UserRole, { label: string; description: string }> = {
+  FLEET_MANAGER: { label: 'Fleet Manager', description: 'Full write access: vehicles, drivers, trips, maintenance. Read access everywhere.' },
+  DRIVER: { label: 'Driver', description: 'Creates and manages trips, logs fuel. Read access everywhere.' },
+  SAFETY_OFFICER: { label: 'Safety Officer', description: 'Manages driver records and compliance. Read access everywhere.' },
+  FINANCIAL_ANALYST: { label: 'Financial Analyst', description: 'Manages expenses, exports financial reports. Read access everywhere.' },
+}
 
 export default function SettingsScreen() {
   const { setIsMobileMenuOpen } = useOutletContext<{ setIsMobileMenuOpen: React.Dispatch<React.SetStateAction<boolean>> }>()
+  const { user } = useAuth()
 
-  // Settings states
+  // Settings states — local/session-only, not persisted to any backend (no
+  // org-settings API exists yet).
   const [companyName, setCompanyName] = useState('TransitOps Logistics')
   const [currency, setCurrency] = useState('INR (₹)')
   const [distanceUnit, setDistanceUnit] = useState('Kilometers (km)')
@@ -12,7 +23,7 @@ export default function SettingsScreen() {
 
   const handleSaveConfig = (e: React.FormEvent) => {
     e.preventDefault()
-    alert('Configuration saved successfully!')
+    alert('Preference saved for this session only (not synced to a server yet).')
   }
 
   return (
@@ -123,42 +134,39 @@ export default function SettingsScreen() {
           <div className="lg:col-span-6 bg-white p-6 rounded-2xl border border-black/5 shadow-sm space-y-6">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-industrial-blue text-xl">shield</span>
-              <h3 className="text-base font-bold text-on-surface font-headline-sm">Security &amp; Command Level Clearance</h3>
+              <h3 className="text-base font-bold text-on-surface font-headline-sm">Your Account &amp; Role</h3>
             </div>
-            
+
+            {user && (
+              <div className="p-3.5 bg-industrial-blue/5 rounded-xl border border-industrial-blue/20 font-sans">
+                <p className="font-bold text-on-surface text-sm">{user.name}</p>
+                <p className="text-xs text-on-surface-variant mt-0.5">{user.email}</p>
+              </div>
+            )}
+
             <div className="space-y-4 text-xs font-mono font-medium text-on-surface">
-              <div className="flex justify-between items-center p-3.5 bg-dashboard-canvas/45 rounded-xl border border-black/[0.01]">
-                <div className="font-sans">
-                  <p className="font-bold text-on-surface">Global Administrator (Level 3)</p>
-                  <p className="text-[10px] text-on-surface-variant mt-0.5">Read/Write full global system controls</p>
+              {(Object.keys(ROLE_INFO) as UserRole[]).map((role) => (
+                <div key={role} className={`flex justify-between items-center p-3.5 rounded-xl border ${
+                  user?.role === role ? 'bg-success-green/5 border-success-green/20' : 'bg-dashboard-canvas/45 border-black/[0.01]'
+                }`}>
+                  <div className="font-sans">
+                    <p className="font-bold text-on-surface">{ROLE_INFO[role].label}</p>
+                    <p className="text-[10px] text-on-surface-variant mt-0.5">{ROLE_INFO[role].description}</p>
+                  </div>
+                  {user?.role === role && (
+                    <span className="bg-success-green/10 text-success-green text-[9px] font-bold px-2 py-0.5 rounded border border-success-green/20 shrink-0">Your Role</span>
+                  )}
                 </div>
-                <span className="bg-success-green/10 text-success-green text-[9px] font-bold px-2 py-0.5 rounded border border-success-green/20">Enabled</span>
-              </div>
-              
-              <div className="flex justify-between items-center p-3.5 bg-dashboard-canvas/45 rounded-xl border border-black/[0.01]">
-                <div className="font-sans">
-                  <p className="font-bold text-on-surface">Fleet Manager (Level 2)</p>
-                  <p className="text-[10px] text-on-surface-variant mt-0.5">Manage assets, assign operators &amp; view logs</p>
-                </div>
-                <span className="bg-success-green/10 text-success-green text-[9px] font-bold px-2 py-0.5 rounded border border-success-green/20">Active Profile</span>
-              </div>
-
-              <div className="flex justify-between items-center p-3.5 bg-dashboard-canvas/45 rounded-xl border border-black/[0.01]">
-                <div className="font-sans">
-                  <p className="font-bold text-on-surface">Operator (Level 1)</p>
-                  <p className="text-[10px] text-on-surface-variant mt-0.5">View routes &amp; record fuel logs only</p>
-                </div>
-                <span className="bg-success-green/10 text-success-green text-[9px] font-bold px-2 py-0.5 rounded border border-success-green/20">Enabled</span>
-              </div>
+              ))}
             </div>
 
-            <div className="bg-red-50/10 border-l-4 border-error-red p-4 rounded-xl">
+            <div className="bg-blue-50/50 border-l-4 border-industrial-blue p-4 rounded-xl">
               <div className="flex gap-3">
-                <span className="material-symbols-outlined text-error-red">security</span>
+                <span className="material-symbols-outlined text-industrial-blue">info</span>
                 <div>
-                  <p className="font-bold text-on-surface font-sans text-xs text-error-red">System Policy Restrictions</p>
+                  <p className="font-bold text-on-surface font-sans text-xs">About Roles</p>
                   <p className="text-on-surface-variant text-[11px] mt-0.5 leading-relaxed font-body-sm">
-                    Modifying system parameters requires multi-factor clearance. Unprivileged edits will immediately log a security violation.
+                    Roles are fixed at account creation. Every role can view all data; write access is restricted per the table above and enforced by the backend on every request.
                   </p>
                 </div>
               </div>

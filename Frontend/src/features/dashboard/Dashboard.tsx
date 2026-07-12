@@ -1,42 +1,80 @@
-import { useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useOutletContext, useNavigate } from 'react-router-dom'
+import { listTrips } from '../../services/trips'
+import { listVehicles } from '../../services/vehicles'
+import { getDashboardKpis } from '../../services/reports'
+import { getApiErrorMessage } from '../../lib/api'
+import type { DashboardKpis, Trip, TripStatus, Vehicle } from '../../types'
 
-interface Trip {
-  id: string
-  vehicle: string
-  driver: string
-  status: 'Dispatched' | 'Completed' | 'Draft'
-  eta: string
+const STATUS_BY_LABEL: Record<string, TripStatus> = {
+  Dispatched: 'DISPATCHED',
+  Completed: 'COMPLETED',
+  Draft: 'DRAFT',
+  Cancelled: 'CANCELLED',
 }
 
 export default function Dashboard() {
   const { setIsMobileMenuOpen } = useOutletContext<{ setIsMobileMenuOpen: React.Dispatch<React.SetStateAction<boolean>> }>()
-  
+  const navigate = useNavigate()
+
   // Filters state
   const [vehicleType, setVehicleType] = useState('All Types')
   const [status, setStatus] = useState('All Statuses')
   const [region, setRegion] = useState('All Regions')
 
-  // Sample data for trips matching Stitch screen content
-  const initialTrips: Trip[] = [
-    { id: 'TR001', vehicle: 'VAN-05', driver: 'Alex', status: 'Dispatched', eta: '45 min' },
-    { id: 'TR002', vehicle: 'TRUCK-02', driver: 'John', status: 'Completed', eta: '—' },
-    { id: 'TR003', vehicle: 'ACE-07', driver: 'Priya', status: 'Dispatched', eta: '1h 20m' },
-    { id: 'TR004', vehicle: '—', driver: '—', status: 'Draft', eta: 'Awaiting vehicle' },
-  ]
-  
-  const [trips, setTrips] = useState<Trip[]>(initialTrips)
+  const [trips, setTrips] = useState<Trip[]>([])
+  const [allVehicles, setAllVehicles] = useState<Vehicle[]>([])
+  const [kpis, setKpis] = useState<DashboardKpis | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+
+  const vehicleTypes = useMemo(() => Array.from(new Set(allVehicles.map((v) => v.type))).sort(), [allVehicles])
+  const regions = useMemo(
+    () => Array.from(new Set(allVehicles.map((v) => v.region).filter((r): r is string => !!r))).sort(),
+    [allVehicles]
+  )
+
+  const fetchDashboardTrips = async () => {
+    setIsLoading(true)
+    setLoadError('')
+    try {
+      const [{ trips: tripData }, { vehicles: vehicleData }, kpiData] = await Promise.all([
+        listTrips({
+          limit: 100,
+          status: status !== 'All Statuses' ? STATUS_BY_LABEL[status] : undefined,
+          sortBy: 'createdAt',
+          sortOrder: 'desc',
+        }),
+        listVehicles({ limit: 100 }),
+        getDashboardKpis(),
+      ])
+      setAllVehicles(vehicleData)
+      setKpis(kpiData)
+
+      let filtered = tripData
+      if (vehicleType !== 'All Types' || region !== 'All Regions') {
+        const matchingVehicleIds = new Set(
+          vehicleData
+            .filter((v) => (vehicleType === 'All Types' || v.type === vehicleType) && (region === 'All Regions' || v.region === region))
+            .map((v) => v.id)
+        )
+        filtered = tripData.filter((t) => matchingVehicleIds.has(t.vehicleId))
+      }
+      setTrips(filtered)
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err, 'Failed to load dashboard trips'))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchDashboardTrips()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleFilterApply = () => {
-    // Basic filter simulation
-    let filtered = [...initialTrips]
-    if (vehicleType !== 'All Types') {
-      filtered = filtered.filter(t => t.vehicle.toLowerCase().includes(vehicleType.toLowerCase().slice(0, -1)))
-    }
-    if (status !== 'All Statuses') {
-      filtered = filtered.filter(t => t.status === status)
-    }
-    setTrips(filtered)
+    fetchDashboardTrips()
   }
 
   return (
@@ -83,8 +121,7 @@ export default function Dashboard() {
                 className="bg-white border-none rounded-xl px-3 py-2 text-sm min-w-[140px] focus:ring-2 focus:ring-success-green outline-none shadow-sm cursor-pointer"
               >
                 <option>All Types</option>
-                <option>Vans</option>
-                <option>Trucks</option>
+                {vehicleTypes.map((t) => <option key={t}>{t}</option>)}
               </select>
             </div>
             <div className="space-y-1">
@@ -98,6 +135,7 @@ export default function Dashboard() {
                 <option>Dispatched</option>
                 <option>Completed</option>
                 <option>Draft</option>
+                <option>Cancelled</option>
               </select>
             </div>
             <div className="space-y-1">
@@ -108,8 +146,7 @@ export default function Dashboard() {
                 className="bg-white border-none rounded-xl px-3 py-2 text-sm min-w-[140px] focus:ring-2 focus:ring-success-green outline-none shadow-sm cursor-pointer"
               >
                 <option>All Regions</option>
-                <option>North</option>
-                <option>South</option>
+                {regions.map((r) => <option key={r}>{r}</option>)}
               </select>
             </div>
             <button
@@ -131,7 +168,7 @@ export default function Dashboard() {
               <div className="w-2.5 h-2.5 rounded-full bg-success-green"></div>
             </div>
             <p className="text-[10px] text-on-surface-variant uppercase mt-3 font-bold tracking-wider font-label-sm">Active Vehicles</p>
-            <p className="text-2xl font-bold font-mono">53</p>
+            <p className="text-2xl font-bold font-mono">{kpis ? kpis.activeVehicles : '—'}</p>
           </div>
           {/* Card 2 */}
           <div className="bg-white p-5 rounded-2xl flex flex-col gap-1 shadow-sm border border-transparent hover:border-success-green/30 transition-all duration-300 group">
@@ -139,7 +176,7 @@ export default function Dashboard() {
               <span className="material-symbols-outlined text-success-green">check_circle</span>
             </div>
             <p className="text-[10px] text-on-surface-variant uppercase mt-3 font-bold tracking-wider font-label-sm">Available</p>
-            <p className="text-2xl font-bold font-mono">42</p>
+            <p className="text-2xl font-bold font-mono">{kpis ? kpis.availableVehicles : '—'}</p>
           </div>
           {/* Card 3 */}
           <div className="bg-white p-5 rounded-2xl flex flex-col gap-1 shadow-sm border border-transparent hover:border-success-green/30 transition-all duration-300 group">
@@ -148,7 +185,7 @@ export default function Dashboard() {
               <div className="w-2.5 h-2.5 rounded-full bg-safety-orange"></div>
             </div>
             <p className="text-[10px] text-on-surface-variant uppercase mt-3 font-bold tracking-wider font-label-sm">In Maintenance</p>
-            <p className="text-2xl font-bold font-mono">5</p>
+            <p className="text-2xl font-bold font-mono">{kpis ? kpis.vehiclesInMaintenance : '—'}</p>
           </div>
           {/* Card 4 */}
           <div className="bg-white p-5 rounded-2xl flex flex-col gap-1 shadow-sm border border-transparent hover:border-success-green/30 transition-all duration-300 group">
@@ -156,7 +193,7 @@ export default function Dashboard() {
               <span className="material-symbols-outlined text-industrial-blue">trending_up</span>
             </div>
             <p className="text-[10px] text-on-surface-variant uppercase mt-3 font-bold tracking-wider font-label-sm">Active Trips</p>
-            <p className="text-2xl font-bold font-mono">19</p>
+            <p className="text-2xl font-bold font-mono">{kpis ? kpis.activeTrips : '—'}</p>
           </div>
           {/* Card 5 */}
           <div className="bg-white p-5 rounded-2xl flex flex-col gap-1 shadow-sm border border-transparent hover:border-success-green/30 transition-all duration-300 group">
@@ -164,7 +201,7 @@ export default function Dashboard() {
               <span className="material-symbols-outlined text-alert-yellow">schedule</span>
             </div>
             <p className="text-[10px] text-on-surface-variant uppercase mt-3 font-bold tracking-wider font-label-sm">Pending Trips</p>
-            <p className="text-2xl font-bold font-mono">4</p>
+            <p className="text-2xl font-bold font-mono">{kpis ? kpis.pendingTrips : '—'}</p>
           </div>
           {/* Card 6 */}
           <div className="bg-white p-5 rounded-2xl flex flex-col gap-1 shadow-sm border border-transparent hover:border-success-green/30 transition-all duration-300 group">
@@ -172,7 +209,7 @@ export default function Dashboard() {
               <span className="material-symbols-outlined text-on-surface">badge</span>
             </div>
             <p className="text-[10px] text-on-surface-variant uppercase mt-3 font-bold tracking-wider font-label-sm">Drivers On Duty</p>
-            <p className="text-2xl font-bold font-mono">26</p>
+            <p className="text-2xl font-bold font-mono">{kpis ? kpis.driversOnDuty : '—'}</p>
           </div>
           {/* Card 7 */}
           <div className="bg-white p-5 rounded-2xl flex flex-col gap-1 shadow-sm border border-transparent hover:border-success-green/30 transition-all duration-300 group">
@@ -180,7 +217,7 @@ export default function Dashboard() {
               <span className="material-symbols-outlined text-on-background">pie_chart</span>
             </div>
             <p className="text-[10px] text-on-surface-variant uppercase mt-3 font-bold tracking-wider font-label-sm">Fleet Utilization</p>
-            <p className="text-2xl font-bold font-mono">87%</p>
+            <p className="text-2xl font-bold font-mono">{kpis ? `${kpis.fleetUtilization}%` : '—'}</p>
           </div>
         </section>
 
@@ -191,12 +228,9 @@ export default function Dashboard() {
           <div className="lg:col-span-2 bg-white rounded-3xl p-6 flex flex-col justify-between min-h-[380px] shadow-sm border border-black/[0.01]">
             <div className="flex justify-between items-center mb-4">
               <div>
-                <h4 className="text-base font-bold text-on-surface font-headline-sm">Real-time Dispatch Map</h4>
-                <p className="text-xs text-on-surface-variant font-body-sm">Live positioning of transit units</p>
+                <h4 className="text-base font-bold text-on-surface font-headline-sm">Dispatch Overview</h4>
+                <p className="text-xs text-on-surface-variant font-body-sm">Vehicles currently on trip</p>
               </div>
-              <span className="text-[10px] font-bold text-success-green bg-green-50 px-3 py-1 rounded-full uppercase tracking-wider font-label-sm flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-success-green rounded-full animate-ping"></span> Live Feed
-              </span>
             </div>
             
             {/* Map Placeholder Graphic */}
@@ -209,17 +243,18 @@ export default function Dashboard() {
                 <path d="M 120 50 Q 300 250 500 100 T 650 300" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" />
               </svg>
               
-              {/* Route Markers */}
-              <div className="absolute top-[80px] left-[200px] flex items-center gap-2 bg-white/95 backdrop-blur px-2.5 py-1 rounded-xl shadow-md border border-black/5 animate-bounce">
-                <span className="material-symbols-outlined text-[16px] text-on-background">local_shipping</span>
-                <span className="text-[10px] font-bold font-mono">TRUCK-02</span>
-              </div>
-              <div className="absolute bottom-[100px] right-[180px] flex items-center gap-2 bg-white/95 backdrop-blur px-2.5 py-1 rounded-xl shadow-md border border-black/5">
-                <span className="material-symbols-outlined text-[16px] text-success-green">local_shipping</span>
-                <span className="text-[10px] font-bold font-mono">VAN-05</span>
-              </div>
-              
-              <p className="text-[10px] text-on-surface-variant/40 relative font-bold uppercase tracking-widest font-label-sm">Map Visualization Area</p>
+              {/* Route Markers — real vehicles currently On Trip, no live GPS coordinates are tracked */}
+              {trips.filter((t) => t.status === 'DISPATCHED').slice(0, 2).map((t, i) => (
+                <div
+                  key={t.id}
+                  className={`absolute flex items-center gap-2 bg-white/95 backdrop-blur px-2.5 py-1 rounded-xl shadow-md border border-black/5 ${i === 0 ? 'top-[80px] left-[200px] animate-bounce' : 'bottom-[100px] right-[180px]'}`}
+                >
+                  <span className={`material-symbols-outlined text-[16px] ${i === 0 ? 'text-on-background' : 'text-success-green'}`}>local_shipping</span>
+                  <span className="text-[10px] font-bold font-mono">{t.vehicle.registrationNumber}</span>
+                </div>
+              ))}
+
+              <p className="text-[10px] text-on-surface-variant/40 relative font-bold uppercase tracking-widest font-label-sm">Map Visualization Area (illustrative — no live GPS feed)</p>
             </div>
           </div>
 
@@ -235,36 +270,42 @@ export default function Dashboard() {
               </div>
 
               {/* Assignment List */}
-              <div className="space-y-3">
-                {trips.map(trip => (
-                  <div key={trip.id} className="p-3 bg-dashboard-canvas/45 rounded-xl border border-black/[0.01] flex justify-between items-center hover:bg-dashboard-canvas/80 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        trip.status === 'Dispatched' ? 'bg-blue-50 text-industrial-blue' : trip.status === 'Completed' ? 'bg-green-50 text-success-green' : 'bg-gray-100 text-on-surface-variant'
+              <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
+                {isLoading ? (
+                  <p className="text-xs text-on-surface-variant text-center py-6">Loading trips...</p>
+                ) : loadError ? (
+                  <p className="text-xs text-error-red text-center py-6">{loadError}</p>
+                ) : trips.length === 0 ? (
+                  <p className="text-xs text-on-surface-variant text-center py-6">No trips match these filters.</p>
+                ) : (
+                  trips.slice(0, 8).map((trip) => (
+                    <div
+                      key={trip.id}
+                      onClick={() => navigate(`/trips/${trip.id}`)}
+                      className="p-3 bg-dashboard-canvas/45 rounded-xl border border-black/[0.01] flex justify-between items-center hover:bg-dashboard-canvas/80 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                          trip.status === 'DISPATCHED' ? 'bg-blue-50 text-industrial-blue' : trip.status === 'COMPLETED' ? 'bg-green-50 text-success-green' : 'bg-gray-100 text-on-surface-variant'
+                        }`}>
+                          <span className="material-symbols-outlined text-[18px]">
+                            {trip.status === 'COMPLETED' ? 'check_circle' : 'route'}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-on-surface font-mono">{trip.vehicle.registrationNumber} <span className="font-sans font-normal text-on-surface-variant text-[11px]">({trip.driver.name})</span></p>
+                          <p className="text-[10px] text-on-surface-variant">{trip.source} → {trip.destination}</p>
+                        </div>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                        trip.status === 'DISPATCHED' ? 'bg-blue-100/60 text-industrial-blue' : trip.status === 'COMPLETED' ? 'bg-green-100/60 text-success-green' : 'bg-gray-200 text-on-surface-variant'
                       }`}>
-                        <span className="material-symbols-outlined text-[18px]">
-                          {trip.status === 'Completed' ? 'check_circle' : 'route'}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-on-surface font-mono">{trip.vehicle} <span className="font-sans font-normal text-on-surface-variant text-[11px]">({trip.driver})</span></p>
-                        <p className="text-[10px] text-on-surface-variant">ETA: {trip.eta}</p>
-                      </div>
+                        {trip.status}
+                      </span>
                     </div>
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                      trip.status === 'Dispatched' ? 'bg-blue-100/60 text-industrial-blue' : trip.status === 'Completed' ? 'bg-green-100/60 text-success-green' : 'bg-gray-200 text-on-surface-variant'
-                    }`}>
-                      {trip.status}
-                    </span>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
-            </div>
-
-            {/* Summary Block */}
-            <div className="rounded-xl bg-gray-50 p-4 flex items-center gap-4 border border-black/[0.01] mt-6">
-              <span className="material-symbols-outlined text-on-surface-variant/40 text-[24px]">analytics</span>
-              <p className="text-[11px] text-on-surface-variant leading-tight font-body-sm">Data updated in real-time. Next refresh in 45 seconds.</p>
             </div>
           </div>
         </section>

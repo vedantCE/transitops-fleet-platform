@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
+import { useAuth } from '../context/AuthContext'
 
 export default function MainLayout() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { user, logout } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [layoutSearchQuery, setLayoutSearchQuery] = useState('')
 
@@ -37,6 +39,7 @@ export default function MainLayout() {
   }
 
   const handleLogout = () => {
+    logout()
     navigate('/login')
   }
 
@@ -70,6 +73,7 @@ export default function MainLayout() {
         layoutSearchQuery={layoutSearchQuery}
         setLayoutSearchQuery={setLayoutSearchQuery}
         onSearchSubmit={handleSearchSubmit}
+        userName={user?.name ?? ''}
       />
 
       {/* MOBILE DRAWER OVERLAY */}
