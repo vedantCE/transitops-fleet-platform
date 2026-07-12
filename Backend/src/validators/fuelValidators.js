@@ -5,7 +5,7 @@ const createFuelLogSchema = z.object({
   tripId: z.string().trim().min(1).optional().nullable(),
   liters: z.coerce.number().positive("Liters must be greater than 0"),
   cost: z.coerce.number().nonnegative("Cost cannot be negative"),
-  date: z.string().datetime({ message: "Invalid date format" }).optional().or(z.date().optional()),
+  date: z.coerce.date({ message: "Invalid date format" }).optional(),
 });
 
 const fuelLogQuerySchema = z.object({

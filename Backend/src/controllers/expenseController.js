@@ -20,11 +20,14 @@ const createExpense = asyncHandler(async (req, res) => {
     throw new AppError("Vehicle not found", 404);
   }
 
-  // Verify trip exists if provided
+  // Verify trip exists and belongs to the same vehicle, if provided
   if (tripId) {
     const trip = await prisma.trip.findUnique({ where: { id: tripId } });
     if (!trip) {
       throw new AppError("Trip not found", 404);
+    }
+    if (trip.vehicleId !== vehicleId) {
+      throw new AppError("Trip does not belong to the specified vehicle", 400);
     }
   }
 

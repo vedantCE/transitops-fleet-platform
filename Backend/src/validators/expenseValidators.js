@@ -6,7 +6,7 @@ const createExpenseSchema = z.object({
   type: z.string().trim().min(1, "Expense type is required"),
   amount: z.coerce.number().positive("Amount must be greater than 0"),
   description: z.string().trim().optional().nullable(),
-  date: z.string().datetime({ message: "Invalid date format" }).optional().or(z.date().optional()),
+  date: z.coerce.date({ message: "Invalid date format" }).optional(),
 });
 
 const expenseQuerySchema = z.object({

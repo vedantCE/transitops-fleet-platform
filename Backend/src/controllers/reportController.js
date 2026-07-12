@@ -5,6 +5,18 @@ const AppError = require("../utils/AppError");
 // REVENUE RATE PER KILOMETER ($2.50)
 const REVENUE_RATE_PER_KM = 2.50;
 
+// Quotes a user-controlled string for CSV output and neutralizes formula
+// injection: spreadsheet apps (Excel/Sheets) execute cell values starting
+// with =, +, -, or @ as formulas, so a value like vehicle name is prefixed
+// with a single quote before quoting/escaping.
+const csvTextField = (value) => {
+  let str = String(value ?? "");
+  if (/^[=+\-@]/.test(str)) {
+    str = `'${str}`;
+  }
+  return `"${str.replace(/"/g, '""')}"`;
+};
+
 /**
  * GET /api/reports/kpis
  * Computes dashboard aggregate metrics.
@@ -118,7 +130,10 @@ const calculateVehicleStats = async (vehicleId) => {
   const totalFuelLiters = fuelSum._sum.liters || 0;
   const totalExpensesCost = expenseSum._sum.amount || 0;
 
-  const totalOperationalCost = totalMaintenanceCost + totalFuelCost + totalExpensesCost;
+  // Spec §3.7/§3.8 define Operational Cost (and the ROI formula built on it)
+  // as Fuel + Maintenance only. Other expenses (tolls, etc.) are reported
+  // separately via totalExpensesCost rather than folded in here.
+  const totalOperationalCost = totalMaintenanceCost + totalFuelCost;
 
   // Compute total distance of completed trips
   const totalDistance = completedTrips.reduce((acc, trip) => {
@@ -212,9 +227,9 @@ const exportCSV = asyncHandler(async (req, res) => {
   statsList.forEach((s) => {
     const row = [
       s.vehicleId,
-      `"${s.registrationNumber}"`,
-      `"${s.name}"`,
-      `"${s.type}"`,
+      csvTextField(s.registrationNumber),
+      csvTextField(s.name),
+      csvTextField(s.type),
       s.acquisitionCost,
       s.totalDistance,
       s.totalMaintenanceCost,
