@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useOutletContext, useNavigate } from 'react-router-dom'
 
 interface Vehicle {
   registrationNumber: string
@@ -14,6 +14,7 @@ interface Vehicle {
 
 export default function FleetRegistry() {
   const { setIsMobileMenuOpen } = useOutletContext<{ setIsMobileMenuOpen: React.Dispatch<React.SetStateAction<boolean>> }>()
+  const navigate = useNavigate()
   
   // Fleet drawer open/close
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -248,7 +249,7 @@ export default function FleetRegistry() {
               </thead>
               <tbody className="divide-y divide-gray-50 text-xs font-mono font-medium text-on-surface">
                 {vehicles.map(vehicle => (
-                  <tr key={vehicle.registrationNumber} className="hover:bg-blue-50/10 transition-colors">
+                  <tr key={vehicle.registrationNumber} className="hover:bg-blue-50/10 transition-colors cursor-pointer" onClick={() => navigate(`/fleet/${vehicle.vehicleId}`)}>
                     <td className="px-6 py-4 font-sans font-bold text-on-surface">{vehicle.registrationNumber}</td>
                     <td className="px-6 py-4 font-bold text-industrial-blue">{vehicle.vehicleId}</td>
                     <td className="px-6 py-4 font-sans text-on-surface-variant">{vehicle.model}</td>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useOutletContext, useNavigate } from 'react-router-dom'
 
 interface Trip {
   id: string
@@ -16,6 +16,7 @@ interface Trip {
 
 export default function TripManagement() {
   const { setIsMobileMenuOpen } = useOutletContext<{ setIsMobileMenuOpen: React.Dispatch<React.SetStateAction<boolean>> }>()
+  const navigate = useNavigate()
   
   // Filters and Lists
   const [tripsFilter, setTripsFilter] = useState('All')
@@ -329,7 +330,7 @@ export default function TripManagement() {
             {/* Board Items */}
             <div className="space-y-4">
               {filteredTrips.map(trip => (
-                <div key={trip.id} className="bg-white p-6 rounded-2xl border border-black/5 shadow-sm flex flex-col md:flex-row justify-between gap-6">
+                <div key={trip.id} className="bg-white p-6 rounded-2xl border border-black/5 shadow-sm flex flex-col md:flex-row justify-between gap-6 hover:border-industrial-blue/30 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate(`/trips/${trip.id}`)}>
                   {/* Route details */}
                   <div className="space-y-4 flex-1">
                     <div className="flex justify-between items-center">
