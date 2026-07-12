@@ -13,6 +13,11 @@ const errorHandler = (err, req, res, next) => {
     message = "Record not found";
   }
 
+  if (err.code === "P2003") {
+    statusCode = 409;
+    message = "Cannot complete this action: record is referenced by other data";
+  }
+
   if (err.name === "JsonWebTokenError") {
     statusCode = 401;
     message = "Invalid token";
