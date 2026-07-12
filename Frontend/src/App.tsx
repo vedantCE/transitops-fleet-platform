@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import Login from './features/authentication/Login'
+import Login from './features/authentication/Auth'
 import Dashboard from './features/dashboard/Dashboard'
 import FleetRegistry from './features/fleet/FleetRegistry'
 import VehicleDetailsScreen from './features/fleet/VehicleDetailsScreen'

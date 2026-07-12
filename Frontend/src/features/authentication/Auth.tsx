@@ -6,12 +6,20 @@ import { getApiErrorMessage } from '../../lib/api'
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login, isAuthenticated } = useAuth()
+  const { login, register, isAuthenticated } = useAuth()
+  
+  // Auth Mode: Sign In or Sign Up
+  const [isSignUp, setIsSignUp] = useState(false)
+  
+  // Field States
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState<'FLEET_MANAGER' | 'DRIVER' | 'SAFETY_OFFICER' | 'FINANCIAL_ANALYST'>('FLEET_MANAGER')
   const [showPassword, setShowPassword] = useState(false)
 
   // Validation states
+  const [nameError, setNameError] = useState(false)
   const [emailError, setEmailError] = useState(false)
   const [passwordError, setPasswordError] = useState(false)
   const [authError, setAuthError] = useState('')
@@ -26,24 +34,37 @@ export default function Login() {
     return <Navigate to={redirectTo} replace />
   }
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // Reset errors
+    setNameError(false)
     setEmailError(false)
     setPasswordError(false)
     setAuthError('')
 
     let hasError = false
 
+    if (isSignUp && name.trim().length < 2) {
+      setNameError(true)
+      hasError = true
+    }
+
     if (!email.includes('@')) {
       setEmailError(true)
       hasError = true
     }
 
-    if (password.length === 0) {
-      setPasswordError(true)
-      hasError = true
+    if (isSignUp) {
+      if (password.length < 6) {
+        setPasswordError(true)
+        hasError = true
+      }
+    } else {
+      if (password.length === 0) {
+        setPasswordError(true)
+        hasError = true
+      }
     }
 
     if (hasError) return
@@ -51,13 +72,17 @@ export default function Login() {
     setIsSubmitting(true)
 
     try {
-      await login(email, password)
+      if (isSignUp) {
+        await register(name, email, password, role)
+      } else {
+        await login(email, password)
+      }
       setIsSuccess(true)
       setTimeout(() => {
         navigate('/dashboard')
       }, 600)
     } catch (err) {
-      setAuthError(getApiErrorMessage(err, 'Invalid email or password'))
+      setAuthError(getApiErrorMessage(err, isSignUp ? 'Registration failed' : 'Invalid email or password'))
       setIsSubmitting(false)
     }
   }
@@ -77,7 +102,7 @@ export default function Login() {
               <img
                 alt="TransitOps Logo"
                 className="w-8 h-8 object-contain filter brightness-0 invert"
-                src="https://lh3.googleusercontent.com/aida/AP1WRLvtl5lSS7yPs6g3mf9fcPEUyebTK0phLR84-tsaGwTJSSZt3kqiXGPL-Vz3lWsqieqDUZHyewmhyqYXDETRl1KQBdJRhXHwk-NyN6D-L_y7wN4WansBoQ13UfdzDZDXPCSUZ8zMZaXVsA2VyieG2UY4QVTeTHYitNAatnrJ-fYrrXMJuAMSqd4XJaE7qRaoPDndC6VZqDz0pOT90x8fc131Ik9ykXdwAW2vuw5V8Kzun0xjboTlJNETKMg"
+                src="https://lh3.googleusercontent.com/aida/AP1WRLvtl5lSS7yPs6g3mf9fcPEUyebTK0phLR84-tsaGwTJSSZt3kqiXGPL-Vz3lWsqieqDUZHyewmhyqYXDETRl1KQBdJRhXHwk-NyN6D-L_y7wN4WansBoQ13UfdzDXPCSUZ8zMZaXVsA2VyieG2UY4QVTeTHYitNAatnrJ-fYrrXMJuAMSqd4XJaE7qRaoPDndC6VZqDz0pOT90x8fc131Ik9ykXdwAW2vuw5V8Kzun0xjboTlJNETKMg"
               />
             </div>
             <div className="flex flex-col">
@@ -133,25 +158,54 @@ export default function Login() {
         </div>
       </section>
 
-      {/* RIGHT SECTION: Login Form */}
+      {/* RIGHT SECTION: Auth Form */}
       <main className="w-full md:w-1/2 lg:w-[55%] flex flex-col justify-center items-center p-8 bg-dashboard-canvas md:rounded-l-[40px] z-20">
         {/* Mobile Logo (Visible only on mobile) */}
         <div className="md:hidden mb-10 flex flex-col items-center">
           <img
             alt="TransitOps Logo"
             className="w-12 h-12 object-contain mb-3"
-            src="https://lh3.googleusercontent.com/aida/AP1WRLvtl5lSS7yPs6g3mf9fcPEUyebTK0phLR84-tsaGwTJSSZt3kqiXGPL-Vz3lWsqieqDUZHyewmhyqYXDETRl1KQBdJRhXHwk-NyN6D-L_y7wN4WansBoQ13UfdzDZDXPCSUZ8zMZaXVsA2VyieG2UY4QVTeTHYitNAatnrJ-fYrrXMJuAMSqd4XJaE7qRaoPDndC6VZqDz0pOT90x8fc131Ik9ykXdwAW2vuw5V8Kzun0xjboTlJNETKMg"
+            src="https://lh3.googleusercontent.com/aida/AP1WRLvtl5lSS7yPs6g3mf9fcPEUyebTK0phLR84-tsaGwTJSSZt3kqiXGPL-Vz3lWsqieqDUZHyewmhyqYXDETRl1KQBdJRhXHwk-NyN6D-L_y7wN4WansBoQ13UfdzDXPCSUZ8zMZaXVsA2VyieG2UY4QVTeTHYitNAatnrJ-fYrrXMJuAMSqd4XJaE7qRaoPDndC6VZqDz0pOT90x8fc131Ik9ykXdwAW2vuw5V8Kzun0xjboTlJNETKMg"
           />
           <h1 className="text-xl font-bold text-on-surface">TransitOps</h1>
         </div>
 
         <div className="w-full max-w-[400px]">
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-on-surface mb-1 font-headline-lg">Sign in to your account</h2>
-            <p className="text-sm text-on-surface-variant/70 font-body-md">Enter your credentials to continue to the dashboard</p>
+            <h2 className="text-2xl font-bold text-on-surface mb-1 font-headline-lg">
+              {isSignUp ? 'Create your account' : 'Sign in to your account'}
+            </h2>
+            <p className="text-sm text-on-surface-variant/70 font-body-md">
+              {isSignUp ? 'Sign up to register a new user profile' : 'Enter your credentials to continue to the dashboard'}
+            </p>
           </div>
 
-          <form className="space-y-5" onSubmit={handleLogin}>
+          <form className="space-y-5" onSubmit={handleAuthSubmit}>
+            {/* Name Field (Sign Up Only) */}
+            {isSignUp && (
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-on-surface-variant uppercase tracking-wider" htmlFor="name">
+                  Full Name
+                </label>
+                <input
+                  className={`w-full px-4 py-3 bg-white/60 border ${
+                    nameError ? 'border-error-red/50 ring-1 ring-error-red/50' : 'border-black/5'
+                  } rounded-lg focus:ring-1 focus:ring-on-background/10 focus:border-on-background/20 outline-none transition-all text-sm text-on-surface placeholder-on-surface-variant/30`}
+                  id="name"
+                  placeholder="John Doe"
+                  required
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+                {nameError && (
+                  <p className="text-error-red text-[11px] mt-1" id="nameError">
+                    Name must be at least 2 characters.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Email Field */}
             <div className="space-y-1.5">
               <label className="block text-[11px] font-bold text-on-surface-variant uppercase tracking-wider" htmlFor="email">
@@ -174,6 +228,25 @@ export default function Login() {
                 </p>
               )}
             </div>
+
+            {/* Role Field (Sign Up Only) */}
+            {isSignUp && (
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+                  Assigned Operational Role
+                </label>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as any)}
+                  className="w-full px-4 py-3 bg-white/60 border border-black/5 rounded-lg focus:ring-1 focus:ring-on-background/10 focus:border-on-background/20 outline-none transition-all text-sm text-on-surface cursor-pointer"
+                >
+                  <option value="FLEET_MANAGER">Fleet Manager</option>
+                  <option value="DRIVER">Driver</option>
+                  <option value="SAFETY_OFFICER">Safety Officer</option>
+                  <option value="FINANCIAL_ANALYST">Financial Analyst</option>
+                </select>
+              </div>
+            )}
 
             {/* Password Field */}
             <div className="space-y-1.5">
@@ -206,7 +279,7 @@ export default function Login() {
               </div>
               {passwordError && (
                 <p className="text-error-red text-[11px] mt-1" id="passwordError">
-                  Password is required.
+                  {isSignUp ? 'Password must be at least 6 characters.' : 'Password is required.'}
                 </p>
               )}
             </div>
@@ -217,7 +290,7 @@ export default function Login() {
               </p>
             )}
 
-            {/* Remember & Forgot */}
+            {/* Remember & Toggle Link */}
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer group">
                 <div className="relative flex items-center">
@@ -233,9 +306,20 @@ export default function Login() {
                   Remember me
                 </span>
               </label>
-              <a className="text-xs font-semibold text-on-background hover:underline" href="#">
-                Forgot password?
-              </a>
+              
+              <button
+                type="button"
+                className="text-xs font-semibold text-on-background hover:underline cursor-pointer"
+                onClick={() => {
+                  setIsSignUp(!isSignUp)
+                  setAuthError('')
+                  setNameError(false)
+                  setEmailError(false)
+                  setPasswordError(false)
+                }}
+              >
+                {isSignUp ? 'Back to Sign In' : 'Create an Account'}
+              </button>
             </div>
 
             {/* Submit Button */}
@@ -258,12 +342,12 @@ export default function Login() {
                       fill="currentColor"
                     ></path>
                   </svg>
-                  <span>Authenticating...</span>
+                  <span>{isSignUp ? 'Creating Profile...' : 'Authenticating...'}</span>
                 </div>
               ) : isSuccess ? (
                 <span>Success</span>
               ) : (
-                <span>Sign In</span>
+                <span>{isSignUp ? 'Sign Up' : 'Sign In'}</span>
               )}
             </button>
           </form>
@@ -278,11 +362,11 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Microsoft Login (not wired to a real SSO provider) */}
+          {/* Microsoft Login */}
           <button
             type="button"
             className="w-full border border-black/5 bg-white/40 text-on-surface text-sm font-medium py-3 rounded-lg hover:bg-white/80 transition-all flex items-center justify-center gap-3 cursor-pointer"
-            onClick={() => setAuthError('SSO login is not available in this environment — please sign in with email and password.')}
+            onClick={() => setAuthError('SSO registration/login is not available — please use email and password.')}
           >
             <svg className="w-4 h-4" viewBox="0 0 23 23">
               <rect fill="#f25022" height="10" width="10"></rect>
